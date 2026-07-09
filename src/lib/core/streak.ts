@@ -1,3 +1,4 @@
+import { addDays } from "./dates";
 import { FREEZE_EARN_INTERVAL, MAX_FREEZES, type DayStatus } from "./types";
 
 export interface SettleInput {
@@ -39,11 +40,7 @@ export function freezesAfterEarn(streak: number, freezes: number): number {
 
 const GOOD: ReadonlySet<DayStatus> = new Set(["complete", "frozen", "repaired"]);
 
-function nextDate(date: string): string {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().slice(0, 10);
-}
+const nextDate = (date: string) => addDays(date, 1);
 
 /** Streaks derive entirely from member_days history: consecutive calendar
  *  dates with a good status. Gaps and misses break the run. */
