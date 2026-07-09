@@ -2,12 +2,17 @@ import { redirect } from "next/navigation";
 import { serverClient } from "@/lib/supabase/server";
 import { LoginForm } from "./login-form";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const supabase = await serverClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (user) redirect("/dashboard");
+  const { error } = await searchParams;
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
@@ -20,6 +25,12 @@ export default async function Home() {
           miss a day, lose your streak.
         </p>
       </div>
+      {error === "auth" && (
+        <p className="max-w-sm text-center text-sm text-destructive">
+          That sign-in link didn&apos;t work — it may have expired or been opened in a
+          different browser than the one you requested it from. Request a fresh one below.
+        </p>
+      )}
       <LoginForm />
     </main>
   );
