@@ -57,7 +57,7 @@ export default async function Home({
             🔥 Grind together
           </AnimatedGradientText>
           <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
-            leet<span className="streak-gradient">streak</span>
+            leet<span className="text-primary">streak</span>
           </h1>
           <p className="max-w-md text-balance text-muted-foreground">
             Daily LeetCode with your friends. Grind the NeetCode 150 together —

@@ -18,7 +18,10 @@ export default function OnboardingPage() {
   }, []);
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-8">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
+      <p className="text-2xl font-bold tracking-tight">
+        leet<span className="text-primary">streak</span> 🔥
+      </p>
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Set up your profile</CardTitle>

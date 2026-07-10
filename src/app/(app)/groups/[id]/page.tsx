@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { HeatmapLegend, type DayCell } from "@/components/day-heatmap";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { addDays, localDate } from "@/lib/core/dates";
 import type { DayStatus } from "@/lib/core/types";
 import { leetcodeSolvedBreakdown } from "@/lib/leetcode";
@@ -88,7 +89,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">{group.name}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{group.name}</h1>
           <p className="text-sm text-muted-foreground">
             {(group.playlists as unknown as { name: string }).name} · {group.mode} ·{" "}
             {group.daily_target_weight} weight/day
@@ -97,35 +98,43 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
         <InviteCode code={group.invite_code} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Leaderboard</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Leaderboard
-              rows={rows}
-              groupId={id}
-              leaderId={group.leader_id}
-              stripDays={STRIP_DAYS}
-            />
-          </div>
-          <div className="mt-3">
-            <HeatmapLegend />
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="leaderboard">
+        <TabsList>
+          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+          {isLeader && <TabsTrigger value="settings">Settings</TabsTrigger>}
+        </TabsList>
 
-      {isLeader && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Group settings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SettingsForm group={group} />
-          </CardContent>
-        </Card>
-      )}
+        <TabsContent value="leaderboard" className="mt-4">
+          <Card>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Leaderboard
+                  rows={rows}
+                  groupId={id}
+                  leaderId={group.leader_id}
+                  stripDays={STRIP_DAYS}
+                />
+              </div>
+              <div className="mt-3">
+                <HeatmapLegend />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {isLeader && (
+          <TabsContent value="settings" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Group settings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SettingsForm group={group} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }

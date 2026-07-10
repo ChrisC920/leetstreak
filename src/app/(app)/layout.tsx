@@ -43,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3 sm:gap-6">
             <Link href="/dashboard" className="flex items-center gap-1 font-bold">
               <span>
-                leet<span className="streak-gradient">streak</span>
+                leet<span className="text-primary">streak</span>
               </span>
               <Flame className="flame-pulse size-4 text-orange-500" aria-hidden />
             </Link>

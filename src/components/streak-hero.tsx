@@ -25,7 +25,7 @@ export function StreakHero({
             {/* NumberTicker renders 0 for value 0, fine */}
             <NumberTicker
               value={streak}
-              className="streak-gradient font-mono text-4xl font-bold tabular-nums sm:text-5xl"
+              className="text-primary font-mono text-4xl font-bold tabular-nums sm:text-5xl"
             />
           </div>
           <p className="text-sm text-muted-foreground">day streak</p>
