@@ -237,7 +237,7 @@ export default async function DashboardPage() {
 
                 {todaysProblems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    No problems assigned today — playlist may be complete. 🎉
+                    No problems assigned today — playlist may be complete.
                   </p>
                 ) : (
                   <>
@@ -280,8 +280,9 @@ export default async function DashboardPage() {
                       ))}
                     </ul>
                     {allDone && (
-                      <p className="text-sm font-medium text-green-600 dark:text-green-500">
-                        Day complete — streak safe. 🔥
+                      <p className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-500">
+                        <CheckCircle2 className="size-4" aria-hidden />
+                        Day complete — streak safe.
                       </p>
                     )}
                   </>

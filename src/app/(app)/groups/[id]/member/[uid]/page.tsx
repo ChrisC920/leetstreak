@@ -1,3 +1,4 @@
+import { Flame, Snowflake, Target, Trophy } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { DayCellSquare, HeatmapLegend } from "@/components/day-heatmap";
 import { LeetCodeStats } from "@/components/leetcode-stats";
@@ -69,13 +70,25 @@ export default async function MemberPage({
         <TabsContent value="leetstreak" className="mt-4 flex flex-col gap-6">
       <StatTiles
         tiles={[
-          ["Current streak", `🔥 ${member.streak_current}`],
-          ["Longest streak", member.streak_longest],
-          [
-            "Completion rate",
-            outcome.settled > 0 ? `${Math.round((goodDays / outcome.settled) * 100)}%` : "—",
-          ],
-          ["Freezes banked", `🧊 ${member.freezes}`],
+          {
+            label: "Current streak",
+            value: member.streak_current,
+            icon: Flame,
+            iconClassName: "text-orange-500",
+          },
+          { label: "Longest streak", value: member.streak_longest, icon: Trophy },
+          {
+            label: "Completion rate",
+            value: outcome.settled > 0 ? Math.round((goodDays / outcome.settled) * 100) : "—",
+            suffix: outcome.settled > 0 ? "%" : undefined,
+            icon: Target,
+          },
+          {
+            label: "Freezes banked",
+            value: member.freezes,
+            icon: Snowflake,
+            iconClassName: "text-sky-400",
+          },
         ]}
       />
 

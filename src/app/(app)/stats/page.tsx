@@ -1,3 +1,14 @@
+import {
+  CalendarDays,
+  Flame,
+  ListChecks,
+  Snowflake,
+  Target,
+  TrendingUp,
+  Trophy,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { DayCellSquare, HeatmapLegend } from "@/components/day-heatmap";
@@ -113,13 +124,25 @@ export default async function StatsPage() {
       <BlurFade>
       <StatTiles
         tiles={[
-          ["Current streak", `🔥 ${streakNow}`],
-          ["Longest streak", streakBest],
-          [
-            "Completion rate",
-            outcome.settled > 0 ? `${Math.round((goodDays / outcome.settled) * 100)}%` : "—",
-          ],
-          ["Freezes banked", `🧊 ${freezesBanked}`],
+          {
+            label: "Current streak",
+            value: streakNow,
+            icon: Flame,
+            iconClassName: "text-orange-500",
+          },
+          { label: "Longest streak", value: streakBest, icon: Trophy },
+          {
+            label: "Completion rate",
+            value: outcome.settled > 0 ? Math.round((goodDays / outcome.settled) * 100) : "—",
+            suffix: outcome.settled > 0 ? "%" : undefined,
+            icon: Target,
+          },
+          {
+            label: "Freezes banked",
+            value: freezesBanked,
+            icon: Snowflake,
+            iconClassName: "text-sky-400",
+          },
         ]}
       />
       </BlurFade>
@@ -173,23 +196,28 @@ export default async function StatsPage() {
           <CardHeader>
             <CardTitle className="text-base">Solve effort</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+          <CardContent className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {(
                 [
-                  ["Tracked solves", solveRows.length],
-                  ["Points earned", `${points} pts`],
-                  ["Avg solves / active day", (solveRows.length / activeDays).toFixed(1)],
-                  ["Busiest weekday", busiest],
-                ] as [string, string | number][]
-              ).map(([label, value]) => (
-                <div key={label}>
-                  <p className="text-lg font-semibold">{value}</p>
-                  <p className="text-muted-foreground">{label}</p>
+                  ["Tracked solves", solveRows.length, ListChecks],
+                  ["Points earned", points, Zap],
+                  ["Avg solves / active day", (solveRows.length / activeDays).toFixed(1), TrendingUp],
+                  ["Busiest weekday", busiest, CalendarDays],
+                ] as [string, string | number, LucideIcon][]
+              ).map(([label, value, Icon]) => (
+                <div key={label} className="flex items-center gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <Icon className="size-4.5 text-primary" aria-hidden />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-mono text-lg font-semibold tabular-nums">{value}</p>
+                    <p className="truncate text-sm text-muted-foreground">{label}</p>
+                  </div>
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Points weight difficulty: easy 1 · medium 2 · hard 4.
             </p>
           </CardContent>
@@ -212,7 +240,10 @@ export default async function StatsPage() {
                     <Link href={`/groups/${group.id}`} className="font-medium hover:underline">
                       {group.name}
                     </Link>
-                    <span className="text-muted-foreground">🔥 {m.streak_current}</span>
+                    <span className="flex items-center gap-1 font-mono text-muted-foreground">
+                      <Flame className="size-3.5 text-orange-500" aria-hidden />
+                      {m.streak_current}
+                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     longest {m.streak_longest} · completion{" "}

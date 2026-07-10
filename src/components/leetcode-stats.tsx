@@ -1,3 +1,4 @@
+import { CircleCheckBig, Gauge } from "lucide-react";
 import { HBar, IntensityLegend, IntensitySquare, StatTiles } from "@/components/stats-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -52,10 +53,25 @@ export async function LeetCodeStats({
         <>
           <StatTiles
             tiles={[
-              ["Total solved", breakdown.all],
-              ["Easy", breakdown.easy],
-              ["Medium", breakdown.medium],
-              ["Hard", breakdown.hard],
+              { label: "Total solved", value: breakdown.all, icon: CircleCheckBig },
+              {
+                label: "Easy",
+                value: breakdown.easy,
+                icon: Gauge,
+                iconClassName: "text-green-600 dark:text-green-500",
+              },
+              {
+                label: "Medium",
+                value: breakdown.medium,
+                icon: Gauge,
+                iconClassName: "text-yellow-600 dark:text-yellow-500",
+              },
+              {
+                label: "Hard",
+                value: breakdown.hard,
+                icon: Gauge,
+                iconClassName: "text-red-600 dark:text-red-500",
+              },
             ]}
           />
           <Card>

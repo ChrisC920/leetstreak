@@ -1,21 +1,40 @@
 // Small server-rendered chart primitives for the stats pages. No chart lib;
 // bars are divs, identity lives in text labels (never color alone).
 
+import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Progress } from "@/components/ui/progress";
 
-/** Row of headline stat cards. Numeric values animate in with a ticker. */
-export function StatTiles({ tiles }: { tiles: [string, string | number][] }) {
+export interface StatTile {
+  label: string;
+  value: string | number;
+  /** Rendered after the value, e.g. "%" */
+  suffix?: string;
+  icon?: LucideIcon;
+  /** Color classes for the icon, e.g. "text-orange-500" */
+  iconClassName?: string;
+}
+
+/** Dashboard-style stat cards: icon chip, big animated number, muted label. */
+export function StatTiles({ tiles }: { tiles: StatTile[] }) {
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-      {tiles.map(([label, value]) => (
+      {tiles.map(({ label, value, suffix, icon: Icon, iconClassName }) => (
         <Card key={label}>
-          <CardContent className="pt-4">
-            <p className="font-mono text-2xl font-semibold tabular-nums">
-              {typeof value === "number" ? <NumberTicker value={value} /> : value}
-            </p>
-            <p className="text-sm text-muted-foreground">{label}</p>
+          <CardContent className="flex items-center gap-3">
+            {Icon && (
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <Icon className={`size-4.5 ${iconClassName ?? "text-primary"}`} aria-hidden />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="font-mono text-2xl font-semibold tabular-nums">
+                {typeof value === "number" ? <NumberTicker value={value} /> : value}
+                {suffix && <span className="text-lg text-muted-foreground">{suffix}</span>}
+              </p>
+              <p className="truncate text-sm text-muted-foreground">{label}</p>
+            </div>
           </CardContent>
         </Card>
       ))}

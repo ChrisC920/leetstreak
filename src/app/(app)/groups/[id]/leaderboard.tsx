@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, Crown } from "lucide-react";
+import { ArrowDown, Crown, Flame, Snowflake, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { DayStrip, type DayCell } from "@/components/day-heatmap";
@@ -28,11 +28,11 @@ export interface LeaderboardRow {
 
 type SortKey = "streak_current" | "streak_longest" | "weight" | "solved";
 
-const COLUMNS: [SortKey, string][] = [
-  ["streak_current", "🔥 Streak"],
-  ["streak_longest", "Best"],
-  ["weight", "Weight (7d)"],
-  ["solved", "Solved"],
+const COLUMNS: [SortKey, string, LucideIcon | null][] = [
+  ["streak_current", "Streak", Flame],
+  ["streak_longest", "Best", null],
+  ["weight", "Weight (7d)", null],
+  ["solved", "Solved", null],
 ];
 
 export function Leaderboard({
@@ -53,8 +53,9 @@ export function Leaderboard({
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
+          <TableHead className="w-8">#</TableHead>
           <TableHead>Member</TableHead>
-          {COLUMNS.map(([key, label]) => (
+          {COLUMNS.map(([key, label, Icon]) => (
             <TableHead key={key}>
               <Button
                 variant="ghost"
@@ -62,18 +63,31 @@ export function Leaderboard({
                 onClick={() => setSortKey(key)}
                 className={`-ml-2 gap-1 ${sortKey === key ? "text-foreground" : "text-muted-foreground"}`}
               >
+                {Icon && <Icon className="size-3.5 text-orange-500" aria-hidden />}
                 {label}
                 {sortKey === key && <ArrowDown className="size-3" aria-hidden />}
               </Button>
             </TableHead>
           ))}
-          <TableHead>🧊</TableHead>
+          <TableHead>
+            <span className="flex items-center gap-1">
+              <Snowflake className="size-3.5 text-sky-400" aria-hidden />
+              Freezes
+            </span>
+          </TableHead>
           <TableHead>Last {stripDays} days</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {sorted.map((m) => (
+        {sorted.map((m, rank) => (
           <TableRow key={m.user_id}>
+            <TableCell
+              className={`font-mono tabular-nums ${
+                rank === 0 ? "font-semibold text-primary" : "text-muted-foreground"
+              }`}
+            >
+              {rank + 1}
+            </TableCell>
             <TableCell className="font-medium">
               <Link
                 href={`/groups/${groupId}/member/${m.user_id}`}
