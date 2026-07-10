@@ -1,6 +1,7 @@
 import { CheckCircle2, Circle, Flame, Snowflake, Users } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { formatInTimeZone } from "date-fns-tz";
 import { DayCompleteConfetti } from "@/components/day-complete-confetti";
 import { StreakHero } from "@/components/streak-hero";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -9,7 +10,7 @@ import { BlurFade } from "@/components/ui/blur-fade";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { canRepair, dayBounds, localDate } from "@/lib/core/dates";
+import { addDays, canRepair, dayBounds, localDate } from "@/lib/core/dates";
 import type { Difficulty } from "@/lib/core/types";
 import { runSettle } from "@/lib/jobs/settle";
 import { serverClient } from "@/lib/supabase/server";
@@ -159,6 +160,7 @@ export default async function DashboardPage() {
       )
       .map((d) => ({
         date: d.date as string,
+        deadline: dayBounds(addDays(d.date, group.grace_period_days), profile.timezone).end,
         problems: (
           ((assignments ?? []).find(
             (a) => a.group_id === m.group_id && a.date === d.date,
@@ -171,6 +173,26 @@ export default async function DashboardPage() {
 
     return { m, group, weights, todaysProblems, weightDone, weightTotal, allDone, backlog };
   });
+
+  const queue = groupData
+    .flatMap(({ group, weights, backlog }) =>
+      backlog.flatMap((b) =>
+        b.problems.map((p) => ({
+          problem: p,
+          weight: weights[p.difficulty],
+          groupName: group.name,
+          deadline: b.deadline,
+        })),
+      ),
+    )
+    .sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
+
+  const hoursLeft = (deadline: Date) =>
+    Math.max(0, Math.floor((deadline.getTime() - now.getTime()) / 3_600_000));
+  const expiresIn = (deadline: Date) => {
+    const h = hoursLeft(deadline);
+    return h < 48 ? `expires in ${h}h` : `expires in ${Math.floor(h / 24)}d`;
+  };
 
   const streakNow = Math.max(0, ...memberships.map((m) => m.streak_current));
   const freezesBanked = Math.max(0, ...memberships.map((m) => m.freezes ?? 0));
@@ -193,8 +215,56 @@ export default async function DashboardPage() {
         <StreakHero streak={streakNow} freezes={freezesBanked} completionPct={completionPct} />
       </BlurFade>
 
+      {queue.length > 0 && (
+        <BlurFade delay={0.05}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Catch-up queue</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-2 text-sm text-muted-foreground">
+                Finish these before their grace period ends to repair your streak.
+              </p>
+              <ul className="divide-y">
+                {queue.map(({ problem: p, weight, groupName, deadline }) => (
+                  <li key={`${groupName}-${p.id}`} className="flex items-center justify-between gap-3 py-2.5">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <a
+                        href={`https://leetcode.com/problems/${p.slug}/`}
+                        target="_blank"
+                        className="truncate font-medium hover:underline"
+                      >
+                        {p.title}
+                      </a>
+                      <Badge variant="secondary" className={`text-xs ${DIFF_COLOR[p.difficulty]}`}>
+                        {p.difficulty} · {weight}w
+                      </Badge>
+                      {groupData.length > 1 && (
+                        <span className="text-xs text-muted-foreground">{groupName}</span>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span
+                        className={`text-xs ${
+                          hoursLeft(deadline) < 24
+                            ? "font-medium text-destructive"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {expiresIn(deadline)}
+                      </span>
+                      <MarkSolvedButton problemId={p.id} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </BlurFade>
+      )}
+
       {groupData.map(
-        ({ m, group, weights, todaysProblems, weightDone, weightTotal, allDone, backlog }, gi) => (
+        ({ m, group, weights, todaysProblems, weightDone, weightTotal, allDone }, gi) => (
           <BlurFade key={m.group_id} delay={0.1 + gi * 0.05}>
             <DayCompleteConfetti fired={allDone} dayKey={`${m.group_id}-${today}`} />
             <Card>
@@ -214,30 +284,6 @@ export default async function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                {backlog.map((b) => (
-                  <div
-                    key={b.date}
-                    className="rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3 text-sm"
-                  >
-                    <p className="font-medium">
-                      Repair your streak: finish {b.date}&apos;s problems within 3 days of the miss.
-                    </p>
-                    <ul className="mt-1 list-inside list-disc">
-                      {b.problems.map((p) => (
-                        <li key={p.id}>
-                          <a
-                            className="underline"
-                            href={`https://leetcode.com/problems/${p.slug}/`}
-                            target="_blank"
-                          >
-                            {p.title}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-
                 {todaysProblems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No problems assigned today — playlist may be complete.
@@ -328,10 +374,8 @@ export default async function DashboardPage() {
                       </a>
                     </span>
                     <span className="ml-auto text-xs text-muted-foreground">
-                      {new Date(a.solved_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {localDate(new Date(a.solved_at), profile.timezone) !== today && "yesterday "}
+                      {formatInTimeZone(new Date(a.solved_at), profile.timezone, "h:mm a")}
                     </span>
                   </li>
                 );

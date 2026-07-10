@@ -14,12 +14,8 @@ export function StreakHero({
   completionPct: number;
 }) {
   return (
-    <Card className="relative overflow-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_80%_at_20%_0%,--alpha(var(--color-primary)/10%),transparent)]"
-      />
-      <CardContent className="relative grid grid-cols-3 gap-4">
+    <Card>
+      <CardContent className="grid grid-cols-3 gap-4">
         <div className="flex flex-col items-start gap-1">
           <div className="flex items-center gap-2">
             <Flame className="flame-pulse size-8 text-orange-500 sm:size-10" aria-hidden />
