@@ -1,7 +1,7 @@
 import { generateAssignment } from "@/lib/core/assignment";
 import { addDays, canRepair, dayBounds, isDayOver, localDate } from "@/lib/core/dates";
 import { computeStreak, freezesAfterEarn, settleDay, type MemberDay } from "@/lib/core/streak";
-import { REPAIR_WINDOW_DAYS, type Difficulty, type Weights } from "@/lib/core/types";
+import type { Difficulty, Weights } from "@/lib/core/types";
 import { adminClient } from "@/lib/supabase/admin";
 
 export interface SettleReport {
@@ -27,6 +27,9 @@ interface GroupRow {
   weight_medium: number;
   weight_hard: number;
   cursor_position: number;
+  grace_period_days: number;
+  freeze_earn_interval: number;
+  max_freezes: number;
 }
 
 type Db = ReturnType<typeof adminClient>;
@@ -61,7 +64,13 @@ function completion(
   return { complete, weightDone };
 }
 
-async function recomputeStreak(db: Db, groupId: string, userId: string, completedToday: boolean) {
+async function recomputeStreak(
+  db: Db,
+  group: GroupRow,
+  groupId: string,
+  userId: string,
+  completedToday: boolean,
+) {
   const { data: history } = await db
     .from("member_days")
     .select("date, status")
@@ -76,7 +85,7 @@ async function recomputeStreak(db: Db, groupId: string, userId: string, complete
     .eq("user_id", userId)
     .single();
   const freezes = completedToday
-    ? freezesAfterEarn(current, member?.freezes ?? 0)
+    ? freezesAfterEarn(current, member?.freezes ?? 0, group.freeze_earn_interval, group.max_freezes)
     : (member?.freezes ?? 0);
 
   await db
@@ -171,7 +180,7 @@ export async function runSettle(now = new Date()): Promise<SettleReport> {
       .update({ freezes: result.freezes })
       .eq("group_id", day.group_id)
       .eq("user_id", day.user_id);
-    await recomputeStreak(db, day.group_id, day.user_id, result.status === "complete");
+    await recomputeStreak(db, group, day.group_id, day.user_id, result.status === "complete");
     report.settled++;
   }
 
@@ -185,10 +194,10 @@ export async function runSettle(now = new Date()): Promise<SettleReport> {
     const profile = profileById.get(day.user_id);
     const group = groupById.get(day.group_id);
     if (!profile || !group) continue;
-    if (!canRepair(day.date, localDate(now, profile.timezone))) continue;
+    if (!canRepair(day.date, localDate(now, profile.timezone), group.grace_period_days)) continue;
 
     const { start } = dayBounds(day.date, profile.timezone);
-    const repairCutoff = dayBounds(addDays(day.date, REPAIR_WINDOW_DAYS), profile.timezone).end;
+    const repairCutoff = dayBounds(addDays(day.date, group.grace_period_days), profile.timezone).end;
     const assignment = assignmentByKey.get(`${day.group_id}|${day.date}`) ?? [];
     const userSolves = solvesByUser.get(day.user_id) ?? new Map();
     const { complete, weightDone } = completion(
@@ -202,7 +211,7 @@ export async function runSettle(now = new Date()): Promise<SettleReport> {
       .eq("group_id", day.group_id)
       .eq("user_id", day.user_id)
       .eq("date", day.date);
-    await recomputeStreak(db, day.group_id, day.user_id, false);
+    await recomputeStreak(db, group, day.group_id, day.user_id, false);
     report.repaired++;
   }
 

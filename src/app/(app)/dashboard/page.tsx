@@ -46,7 +46,7 @@ export default async function DashboardPage() {
 
   const { data: memberships } = await supabase
     .from("group_members")
-    .select("group_id, streak_current, streak_longest, freezes, groups(id, name, daily_target_weight, weight_easy, weight_medium, weight_hard)")
+    .select("group_id, streak_current, streak_longest, freezes, groups(id, name, daily_target_weight, weight_easy, weight_medium, weight_hard, grace_period_days, freeze_earn_interval, max_freezes)")
     .eq("user_id", user.id);
 
   if (!memberships || memberships.length === 0) {
@@ -129,6 +129,9 @@ export default async function DashboardPage() {
       weight_easy: number;
       weight_medium: number;
       weight_hard: number;
+      grace_period_days: number;
+      freeze_earn_interval: number;
+      max_freezes: number;
     };
     const weights = {
       easy: group.weight_easy,
@@ -152,7 +155,7 @@ export default async function DashboardPage() {
         (d) =>
           d.group_id === m.group_id &&
           d.status === "missed" &&
-          canRepair(d.date, today),
+          canRepair(d.date, today, group.grace_period_days),
       )
       .map((d) => ({
         date: d.date as string,

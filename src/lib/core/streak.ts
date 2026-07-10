@@ -1,5 +1,5 @@
 import { addDays } from "./dates";
-import { FREEZE_EARN_INTERVAL, MAX_FREEZES, type DayStatus } from "./types";
+import type { DayStatus } from "./types";
 
 export interface SettleInput {
   complete: boolean;
@@ -29,11 +29,17 @@ export interface StreakResult {
   longest: number;
 }
 
-/** Completing a day that lands the streak on a multiple of 7 earns a freeze.
- *  Event-based (not derived from history) so spent freezes stay spent. */
-export function freezesAfterEarn(streak: number, freezes: number): number {
-  if (streak > 0 && streak % FREEZE_EARN_INTERVAL === 0) {
-    return Math.min(freezes + 1, MAX_FREEZES);
+/** Completing a day that lands the streak on a multiple of `earnInterval`
+ *  earns a freeze. Event-based (not derived from history) so spent freezes
+ *  stay spent. */
+export function freezesAfterEarn(
+  streak: number,
+  freezes: number,
+  earnInterval: number,
+  maxFreezes: number,
+): number {
+  if (streak > 0 && streak % earnInterval === 0) {
+    return Math.min(freezes + 1, maxFreezes);
   }
   return freezes;
 }

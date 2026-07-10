@@ -1,5 +1,4 @@
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
-import { REPAIR_WINDOW_DAYS } from "./types";
 
 /** Calendar date (YYYY-MM-DD) for a UTC instant in the given IANA timezone. */
 export function localDate(utcNow: Date, timezone: string): string {
@@ -34,7 +33,7 @@ function daysBetween(a: string, b: string): number {
 }
 
 /** Backlog from `missedDate` can still repair the streak on `today`. */
-export function canRepair(missedDate: string, today: string): boolean {
+export function canRepair(missedDate: string, today: string, windowDays: number): boolean {
   const d = daysBetween(missedDate, today);
-  return d >= 0 && d <= REPAIR_WINDOW_DAYS;
+  return d >= 0 && d <= windowDays;
 }

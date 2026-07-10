@@ -176,11 +176,13 @@ describe("computeStreak", () => {
     expect(computeStreak(days)).toEqual({ current: 14, longest: 14 });
   });
 
-  it("freezesAfterEarn grants on multiples of 7, capped at 2", () => {
-    expect(freezesAfterEarn(7, 0)).toBe(1);
-    expect(freezesAfterEarn(14, 2)).toBe(2); // capped
-    expect(freezesAfterEarn(6, 0)).toBe(0);
-    expect(freezesAfterEarn(0, 0)).toBe(0);
+  it("freezesAfterEarn grants on multiples of the interval, capped at max", () => {
+    expect(freezesAfterEarn(7, 0, 7, 2)).toBe(1);
+    expect(freezesAfterEarn(14, 2, 7, 2)).toBe(2); // capped
+    expect(freezesAfterEarn(6, 0, 7, 2)).toBe(0);
+    expect(freezesAfterEarn(0, 0, 7, 2)).toBe(0);
+    expect(freezesAfterEarn(5, 0, 5, 3)).toBe(1); // custom interval
+    expect(freezesAfterEarn(10, 3, 5, 3)).toBe(3); // custom cap
   });
 
   it("pending days are ignored (not yet settled)", () => {
@@ -208,9 +210,12 @@ describe("dates", () => {
     expect(isDayOver("2026-07-09", utc, "America/Los_Angeles")).toBe(false);
   });
 
-  it("canRepair: within 3 days of the missed date", () => {
-    expect(canRepair("2026-07-09", "2026-07-10")).toBe(true);
-    expect(canRepair("2026-07-09", "2026-07-12")).toBe(true);
-    expect(canRepair("2026-07-09", "2026-07-13")).toBe(false);
+  it("canRepair: within the group's grace window", () => {
+    expect(canRepair("2026-07-09", "2026-07-10", 3)).toBe(true);
+    expect(canRepair("2026-07-09", "2026-07-12", 3)).toBe(true);
+    expect(canRepair("2026-07-09", "2026-07-13", 3)).toBe(false);
+    expect(canRepair("2026-07-09", "2026-07-10", 1)).toBe(true); // custom window
+    expect(canRepair("2026-07-09", "2026-07-11", 1)).toBe(false);
+    expect(canRepair("2026-07-09", "2026-07-09", 0)).toBe(true); // 0 = same day only
   });
 });
