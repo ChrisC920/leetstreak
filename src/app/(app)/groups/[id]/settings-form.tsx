@@ -4,6 +4,13 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { updateGroup, type GroupFormState } from "../actions";
 
 interface GroupSettings {
@@ -28,15 +35,15 @@ export function SettingsForm({ group }: { group: GroupSettings }) {
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="mode">Order</Label>
-        <select
-          id="mode"
-          name="mode"
-          defaultValue={group.mode}
-          className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
-        >
-          <option value="ordered">Playlist order</option>
-          <option value="random">Random each day</option>
-        </select>
+        <Select name="mode" defaultValue={group.mode}>
+          <SelectTrigger id="mode" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ordered">Playlist order</SelectItem>
+            <SelectItem value="random">Random each day</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="daily_target_weight">Daily weight target</Label>

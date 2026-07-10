@@ -4,6 +4,13 @@ import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createGroup, type GroupFormState } from "../actions";
 
 interface Playlist {
@@ -23,29 +30,31 @@ export function CreateGroupForm({ playlists }: { playlists: Playlist[] }) {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="playlist_id">Playlist</Label>
-        <select
-          id="playlist_id"
-          name="playlist_id"
-          className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
-        >
-          {playlists.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <Select name="playlist_id" defaultValue={playlists[0]?.id}>
+          <SelectTrigger id="playlist_id" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {playlists.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="mode">Order</Label>
-        <select
-          id="mode"
-          name="mode"
-          className="h-9 rounded-lg border border-input bg-background px-3 text-sm"
-        >
-          <option value="ordered">Playlist order</option>
-          <option value="random">Random each day</option>
-        </select>
+        <Select name="mode" defaultValue="ordered">
+          <SelectTrigger id="mode" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ordered">Playlist order</SelectItem>
+            <SelectItem value="random">Random each day</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-2">
