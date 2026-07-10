@@ -42,27 +42,44 @@ export function StatTiles({ tiles }: { tiles: StatTile[] }) {
   );
 }
 
-/** Colored swatch row of settled-day outcome counts (status palette). */
+/** Proportional stacked bar of settled-day outcomes + legend with counts. */
 export function OutcomeRow({
   counts,
 }: {
   counts: { complete: number; repaired: number; frozen: number; missed: number };
 }) {
+  const segments = [
+    ["complete", counts.complete, "#16a34a"],
+    ["repaired", counts.repaired, "#4ade80"],
+    ["frozen", counts.frozen, "#0284c7"],
+    ["missed", counts.missed, "#ef4444"],
+  ] as const;
+  const total = segments.reduce((s, [, n]) => s + n, 0);
+
   return (
-    <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-      {(
-        [
-          ["complete", counts.complete, "#16a34a"],
-          ["repaired", counts.repaired, "#16a34a"],
-          ["frozen", counts.frozen, "#0284c7"],
-          ["missed", counts.missed, "#ef4444"],
-        ] as const
-      ).map(([label, count, color]) => (
-        <span key={label} className="flex items-center gap-1.5">
-          <span className="size-3 rounded-[2px]" style={{ backgroundColor: color }} />
-          {count} {label}
-        </span>
-      ))}
+    <div className="flex flex-col gap-3">
+      <div className="flex h-2.5 w-full gap-px overflow-hidden rounded-full bg-muted">
+        {total > 0 &&
+          segments.map(
+            ([label, count, color]) =>
+              count > 0 && (
+                <div
+                  key={label}
+                  title={`${count} ${label}`}
+                  style={{ width: `${(count / total) * 100}%`, backgroundColor: color }}
+                />
+              ),
+          )}
+      </div>
+      <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+        {segments.map(([label, count, color]) => (
+          <span key={label} className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full" style={{ backgroundColor: color }} />
+            <span className="font-mono tabular-nums">{count}</span>
+            <span className="text-muted-foreground">{label}</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -92,22 +109,28 @@ export function HBar({
   );
 }
 
-/** Column bars for good-days-per-week (0–7), oldest → newest. */
+/** Column bars for good-days-per-week (0–7) on muted tracks, oldest → newest. */
 export function WeeklyTrendBars({ weeks }: { weeks: { label: string; good: number }[] }) {
   return (
-    <div className="flex h-24 items-end gap-1">
-      {weeks.map((w) => (
-        <div
-          key={w.label}
-          title={`week of ${w.label}: ${w.good}/7 good days`}
-          className="flex flex-1 flex-col justify-end self-stretch"
-        >
+    <div className="flex flex-col gap-1.5">
+      <div className="flex h-24 items-end gap-1.5">
+        {weeks.map((w) => (
           <div
-            className="w-full rounded-t-[3px] bg-primary"
-            style={{ height: `${Math.max((w.good / 7) * 100, w.good > 0 ? 4 : 2)}%` }}
-          />
-        </div>
-      ))}
+            key={w.label}
+            title={`week of ${w.label}: ${w.good}/7 good days`}
+            className="relative flex-1 self-stretch overflow-hidden rounded-sm bg-muted"
+          >
+            <div
+              className="absolute inset-x-0 bottom-0 rounded-sm bg-primary"
+              style={{ height: `${Math.max((w.good / 7) * 100, w.good > 0 ? 6 : 0)}%` }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-between font-mono text-[10px] text-muted-foreground">
+        <span>{weeks[0]?.label}</span>
+        <span>{weeks[weeks.length - 1]?.label}</span>
+      </div>
     </div>
   );
 }

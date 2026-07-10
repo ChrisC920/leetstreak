@@ -14,8 +14,10 @@ import Link from "next/link";
 import { DayCellSquare, HeatmapLegend } from "@/components/day-heatmap";
 import { LeetCodeStats } from "@/components/leetcode-stats";
 import { OutcomeRow, StatTiles, WeeklyTrendBars } from "@/components/stats-charts";
+import { Badge } from "@/components/ui/badge";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { localDate } from "@/lib/core/dates";
 import type { DayStatus, Difficulty } from "@/lib/core/types";
@@ -147,17 +149,7 @@ export default async function StatsPage() {
       />
       </BlurFade>
 
-      {outcome.settled > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Day outcomes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <OutcomeRow counts={outcome} />
-          </CardContent>
-        </Card>
-      )}
-
+      <BlurFade delay={0.1}>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Last {WEEKS} weeks</CardTitle>
@@ -177,21 +169,38 @@ export default async function StatsPage() {
           <HeatmapLegend />
         </CardContent>
       </Card>
+      </BlurFade>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Weekly consistency</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          <WeeklyTrendBars weeks={trend} />
-          <p className="text-xs text-muted-foreground">
-            Good days per week (complete, repaired, or frozen) over the last {TREND_WEEKS} weeks,
-            oldest to newest.
-          </p>
-        </CardContent>
-      </Card>
+      <BlurFade delay={0.15}>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Weekly consistency</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            <WeeklyTrendBars weeks={trend} />
+            <p className="text-xs text-muted-foreground">
+              Good days per week (complete, repaired, or frozen) over the last {TREND_WEEKS} weeks,
+              oldest to newest.
+            </p>
+          </CardContent>
+        </Card>
+
+        {outcome.settled > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Day outcomes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <OutcomeRow counts={outcome} />
+            </CardContent>
+          </Card>
+        )}
+      </div>
+      </BlurFade>
 
       {solveRows.length > 0 && (
+        <BlurFade delay={0.2}>
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Solve effort</CardTitle>
@@ -222,39 +231,58 @@ export default async function StatsPage() {
             </p>
           </CardContent>
         </Card>
+        </BlurFade>
       )}
 
       {(memberships ?? []).length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Your groups</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {(memberships ?? []).map((m) => {
-              const group = m.groups as unknown as { id: string; name: string };
-              const g = daysByGroup.get(m.group_id);
-              const r = rankInGroup.get(m.group_id);
-              return (
-                <div key={m.group_id} className="flex flex-col gap-0.5 text-sm">
-                  <div className="flex items-center justify-between">
-                    <Link href={`/groups/${group.id}`} className="font-medium hover:underline">
-                      {group.name}
-                    </Link>
-                    <span className="flex items-center gap-1 font-mono text-muted-foreground">
-                      <Flame className="size-3.5 text-orange-500" aria-hidden />
-                      {m.streak_current}
-                    </span>
+        <BlurFade delay={0.25}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Your groups</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              {(memberships ?? []).map((m) => {
+                const group = m.groups as unknown as { id: string; name: string };
+                const g = daysByGroup.get(m.group_id);
+                const r = rankInGroup.get(m.group_id);
+                const pct = g && g.settled > 0 ? Math.round((g.good / g.settled) * 100) : null;
+                return (
+                  <div key={m.group_id} className="flex flex-col gap-2.5 rounded-lg border p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <Link
+                        href={`/groups/${group.id}`}
+                        className="truncate font-medium hover:underline"
+                      >
+                        {group.name}
+                      </Link>
+                      {r && r.size > 1 && (
+                        <Badge variant="secondary" className="shrink-0 font-mono">
+                          #{r.rank}/{r.size}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1 font-mono">
+                        <Flame className="size-3.5 text-orange-500" aria-hidden />
+                        {m.streak_current}
+                      </span>
+                      <span className="flex items-center gap-1 font-mono">
+                        <Trophy className="size-3.5" aria-hidden />
+                        {m.streak_longest}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Progress value={pct ?? 0} className="h-1.5" />
+                      <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                        {pct !== null ? `${pct}%` : "—"}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    longest {m.streak_longest} · completion{" "}
-                    {g && g.settled > 0 ? `${Math.round((g.good / g.settled) * 100)}%` : "—"}
-                    {r && r.size > 1 && ` · rank ${r.rank}/${r.size} by streak`}
-                  </p>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </BlurFade>
       )}
 
         </TabsContent>
