@@ -7,7 +7,11 @@ export interface AcSubmission {
   timestamp: number;
 }
 
-async function gql<T>(query: string, variables: Record<string, unknown>): Promise<T> {
+async function gql<T>(
+  query: string,
+  variables: Record<string, unknown>,
+  revalidate?: number,
+): Promise<T> {
   const res = await fetch(LEETCODE_GRAPHQL, {
     method: "POST",
     headers: {
@@ -17,6 +21,7 @@ async function gql<T>(query: string, variables: Record<string, unknown>): Promis
       Referer: "https://leetcode.com",
     },
     body: JSON.stringify({ query, variables }),
+    ...(revalidate !== undefined && { next: { revalidate } }),
   });
   if (!res.ok) throw new Error(`LeetCode API ${res.status}`);
   const json = await res.json();
@@ -44,6 +49,49 @@ export async function recentAcceptedSubmissions(
     titleSlug: s.titleSlug,
     timestamp: Number(s.timestamp),
   }));
+}
+
+export interface SolvedBreakdown {
+  all: number;
+  easy: number;
+  medium: number;
+  hard: number;
+}
+
+/**
+ * Lifetime accepted-problem counts for a public profile.
+ * Throws when the profile is unknown/private (module convention).
+ * `revalidate` (seconds) caches the underlying fetch via Next's data cache.
+ */
+export async function leetcodeSolvedBreakdown(
+  username: string,
+  revalidate?: number,
+): Promise<SolvedBreakdown> {
+  const data = await gql<{
+    matchedUser: {
+      submitStatsGlobal: { acSubmissionNum: { difficulty: string; count: number }[] };
+    } | null;
+  }>(
+    `query userSolvedBreakdown($username: String!) {
+      matchedUser(username: $username) {
+        submitStatsGlobal {
+          acSubmissionNum { difficulty count }
+        }
+      }
+    }`,
+    { username },
+    revalidate,
+  );
+  if (!data.matchedUser) throw new Error(`LeetCode user not found: ${username}`);
+  const counts = new Map(
+    data.matchedUser.submitStatsGlobal.acSubmissionNum.map((e) => [e.difficulty, e.count]),
+  );
+  return {
+    all: counts.get("All") ?? 0,
+    easy: counts.get("Easy") ?? 0,
+    medium: counts.get("Medium") ?? 0,
+    hard: counts.get("Hard") ?? 0,
+  };
 }
 
 /** Does this LeetCode username exist (public profile reachable)? */

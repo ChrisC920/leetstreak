@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { DayCellSquare, HeatmapLegend } from "@/components/day-heatmap";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 import { addDays, localDate } from "@/lib/core/dates";
 import type { DayStatus } from "@/lib/core/types";
+import { leetcodeSolvedBreakdown, type SolvedBreakdown } from "@/lib/leetcode";
 import { serverClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +23,11 @@ export default async function StatsPage() {
 
   const [{ data: profile }, { data: days }, { data: memberships }, { count: solveCount }] =
     await Promise.all([
-      supabase.from("profiles").select("timezone").eq("id", user.id).single(),
+      supabase.from("profiles").select("timezone, leetcode_username").eq("id", user.id).single(),
       supabase.from("member_days").select("date, status").eq("user_id", user.id),
       supabase
         .from("group_members")
-        .select("streak_current, streak_longest")
+        .select("streak_current, streak_longest, group_id, groups(id, name)")
         .eq("user_id", user.id),
       supabase.from("solves").select("*", { count: "exact", head: true }).eq("user_id", user.id),
     ]);
@@ -53,10 +55,19 @@ export default async function StatsPage() {
   const settled = (days ?? []).filter((d) => d.status !== "pending");
   const goodDays = settled.filter((d) => d.status !== "missed").length;
 
+  let breakdown: SolvedBreakdown | null = null;
+  if (profile?.leetcode_username) {
+    try {
+      breakdown = await leetcodeSolvedBreakdown(profile.leetcode_username, 600);
+    } catch {
+      // LeetCode down / profile gone — fall back to catalog count
+    }
+  }
+
   const tiles: [string, string | number][] = [
     ["Current streak", `🔥 ${streakNow}`],
     ["Longest streak", streakBest],
-    ["Problems solved", solveCount ?? 0],
+    ["Problems solved", breakdown?.all ?? solveCount ?? 0],
     [
       "Completion rate",
       settled.length > 0 ? `${Math.round((goodDays / settled.length) * 100)}%` : "—",
@@ -77,6 +88,33 @@ export default async function StatsPage() {
           </Card>
         ))}
       </div>
+
+      {breakdown && (
+        <p className="text-sm text-muted-foreground">
+          Easy {breakdown.easy} · Medium {breakdown.medium} · Hard {breakdown.hard}
+        </p>
+      )}
+
+      {(memberships ?? []).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Your groups</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {(memberships ?? []).map((m) => {
+              const group = m.groups as unknown as { id: string; name: string };
+              return (
+                <div key={m.group_id} className="flex items-center justify-between text-sm">
+                  <Link href={`/groups/${group.id}`} className="font-medium hover:underline">
+                    {group.name}
+                  </Link>
+                  <span className="text-muted-foreground">🔥 {m.streak_current}</span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

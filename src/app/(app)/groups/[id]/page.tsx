@@ -1,10 +1,12 @@
 import { notFound, redirect } from "next/navigation";
-import { DayStrip, HeatmapLegend, type DayCell } from "@/components/day-heatmap";
+import { HeatmapLegend, type DayCell } from "@/components/day-heatmap";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { addDays, localDate } from "@/lib/core/dates";
 import type { DayStatus } from "@/lib/core/types";
+import { leetcodeSolvedBreakdown } from "@/lib/leetcode";
 import { serverClient } from "@/lib/supabase/server";
 import { InviteCode } from "./invite-code";
+import { Leaderboard, type LeaderboardRow } from "./leaderboard";
 import { SettingsForm } from "./settings-form";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +31,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
   const [{ data: members }, { data: days }, { data: profile }] = await Promise.all([
     supabase
       .from("group_members")
-      .select("user_id, streak_current, streak_longest, freezes, profiles(username)")
+      .select("user_id, streak_current, streak_longest, freezes, profiles(username, leetcode_username)")
       .eq("group_id", id)
       .order("streak_current", { ascending: false }),
     supabase.from("member_days").select("user_id, date, status, weight_done").eq("group_id", id),
@@ -52,6 +54,34 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  const solvedByUser = new Map<string, number | null>(
+    await Promise.all(
+      (members ?? []).map(async (m): Promise<[string, number | null]> => {
+        const lc = (m.profiles as unknown as { leetcode_username: string | null })
+          ?.leetcode_username;
+        if (!lc) return [m.user_id, null];
+        try {
+          return [m.user_id, (await leetcodeSolvedBreakdown(lc, 600)).all];
+        } catch {
+          return [m.user_id, null]; // private/renamed profile or API down — show "—"
+        }
+      }),
+    ),
+  );
+
+  const rows: LeaderboardRow[] = (members ?? []).map((m) => ({
+    user_id: m.user_id,
+    username: (m.profiles as unknown as { username: string })?.username,
+    streak_current: m.streak_current,
+    streak_longest: m.streak_longest,
+    freezes: m.freezes,
+    weight: weeklyWeight.get(m.user_id) ?? 0,
+    solved: solvedByUser.get(m.user_id) ?? null,
+    cells: stripDates.map(
+      (date): DayCell => ({ date, status: dayByUser.get(m.user_id)?.get(date) }),
+    ),
+  }));
+
   const isLeader = group.leader_id === user.id;
 
   return (
@@ -73,44 +103,12 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-muted-foreground">
-                  <th className="pb-2 font-medium">Member</th>
-                  <th className="pb-2 font-medium">🔥 Streak</th>
-                  <th className="pb-2 font-medium">Best</th>
-                  <th className="pb-2 font-medium">🧊</th>
-                  <th className="pb-2 font-medium">Weight (7d)</th>
-                  <th className="pb-2 font-medium">Last {STRIP_DAYS} days</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(members ?? []).map((m) => {
-                  const username = (m.profiles as unknown as { username: string })?.username;
-                  const cells: DayCell[] = stripDates.map((date) => ({
-                    date,
-                    status: dayByUser.get(m.user_id)?.get(date),
-                  }));
-                  return (
-                    <tr key={m.user_id} className="border-t">
-                      <td className="py-2 font-medium">
-                        {username}
-                        {m.user_id === group.leader_id && (
-                          <span className="ml-1 text-xs text-muted-foreground">(leader)</span>
-                        )}
-                      </td>
-                      <td className="py-2">{m.streak_current}</td>
-                      <td className="py-2">{m.streak_longest}</td>
-                      <td className="py-2">{m.freezes}</td>
-                      <td className="py-2">{weeklyWeight.get(m.user_id) ?? 0}</td>
-                      <td className="py-2">
-                        <DayStrip cells={cells} />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <Leaderboard
+              rows={rows}
+              groupId={id}
+              leaderId={group.leader_id}
+              stripDays={STRIP_DAYS}
+            />
           </div>
           <div className="mt-3">
             <HeatmapLegend />
