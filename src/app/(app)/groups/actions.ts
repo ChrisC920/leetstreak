@@ -93,6 +93,24 @@ export async function updateGroup(
   return {};
 }
 
+export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
+  const supabase = await serverClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  // RLS: only own non-leader membership rows are deletable
+  const { error, count } = await supabase
+    .from("group_members")
+    .delete({ count: "exact" })
+    .eq("group_id", groupId)
+    .eq("user_id", user.id);
+  if (error) return { error: error.message };
+  if (!count) return { error: "Leaders can't leave their own group" };
+  redirect("/groups");
+}
+
 export async function grantFreeze(
   groupId: string,
   userId: string,

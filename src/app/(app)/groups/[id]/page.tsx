@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { addDays, localDate } from "@/lib/core/dates";
 import type { DayStatus } from "@/lib/core/types";
-import { leetcodeSolvedBreakdown } from "@/lib/leetcode";
 import { serverClient } from "@/lib/supabase/server";
 import { InviteCode } from "./invite-code";
 import { Leaderboard, type LeaderboardRow } from "./leaderboard";
+import { LeaveButton } from "./leave-button";
 import { SettingsForm } from "./settings-form";
 
 export const dynamic = "force-dynamic";
@@ -29,15 +29,17 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     .maybeSingle();
   if (!group) notFound(); // not a member -> RLS hides the row
 
-  const [{ data: members }, { data: days }, { data: profile }] = await Promise.all([
-    supabase
-      .from("group_members")
-      .select("user_id, streak_current, streak_longest, freezes, profiles(username, leetcode_username)")
-      .eq("group_id", id)
-      .order("streak_current", { ascending: false }),
-    supabase.from("member_days").select("user_id, date, status, weight_done").eq("group_id", id),
-    supabase.from("profiles").select("timezone").eq("id", user.id).single(),
-  ]);
+  const [{ data: members }, { data: days }, { data: profile }, { data: assignments }] =
+    await Promise.all([
+      supabase
+        .from("group_members")
+        .select("user_id, streak_current, streak_longest, freezes, profiles(username)")
+        .eq("group_id", id)
+        .order("streak_current", { ascending: false }),
+      supabase.from("member_days").select("user_id, date, status, weight_done").eq("group_id", id),
+      supabase.from("profiles").select("timezone").eq("id", user.id).single(),
+      supabase.from("daily_assignments").select("problem_ids").eq("group_id", id),
+    ]);
 
   const today = localDate(new Date(), profile?.timezone ?? "UTC");
   const weekAgo = addDays(today, -6);
@@ -57,20 +59,17 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  const solvedByUser = new Map<string, number | null>(
-    await Promise.all(
-      (members ?? []).map(async (m): Promise<[string, number | null]> => {
-        const lc = (m.profiles as unknown as { leetcode_username: string | null })
-          ?.leetcode_username;
-        if (!lc) return [m.user_id, null];
-        try {
-          return [m.user_id, (await leetcodeSolvedBreakdown(lc, 600)).all];
-        } catch {
-          return [m.user_id, null]; // private/renamed profile or API down — show "—"
-        }
-      }),
-    ),
-  );
+  // solved = problems this group assigned that the member has solved (any time)
+  const assignedIds = new Set((assignments ?? []).flatMap((a) => a.problem_ids as string[]));
+  const { data: solves } = await supabase
+    .from("solves")
+    .select("user_id, problem_id")
+    .in("user_id", (members ?? []).map((m) => m.user_id));
+  const solvedByUser = new Map<string, number>();
+  for (const s of solves ?? []) {
+    if (!assignedIds.has(s.problem_id)) continue;
+    solvedByUser.set(s.user_id, (solvedByUser.get(s.user_id) ?? 0) + 1);
+  }
 
   const rows: LeaderboardRow[] = (members ?? []).map((m) => ({
     user_id: m.user_id,
@@ -79,7 +78,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     streak_longest: m.streak_longest,
     freezes: m.freezes,
     weight: weeklyWeight.get(m.user_id) ?? 0,
-    solved: solvedByUser.get(m.user_id) ?? null,
+    solved: solvedByUser.get(m.user_id) ?? 0,
     cells: stripDates.map((date): DayCell => {
       const day = dayByUser.get(m.user_id)?.get(date);
       return { date, status: day?.status, weight: day?.weight };
@@ -98,7 +97,10 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
             {group.daily_target_weight} weight/day
           </p>
         </div>
-        <InviteCode code={group.invite_code} />
+        <div className="flex items-center gap-2">
+          {!isLeader && <LeaveButton groupId={id} groupName={group.name} />}
+          <InviteCode code={group.invite_code} />
+        </div>
       </div>
 
       <Tabs defaultValue="leaderboard">

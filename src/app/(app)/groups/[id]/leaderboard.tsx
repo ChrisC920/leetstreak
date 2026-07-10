@@ -24,7 +24,7 @@ export interface LeaderboardRow {
   streak_longest: number;
   freezes: number;
   weight: number;
-  solved: number | null;
+  solved: number;
   cells: DayCell[];
 }
 
@@ -114,7 +114,7 @@ export function Leaderboard({
             <TableCell className="tabular-nums">{m.streak_current}</TableCell>
             <TableCell className="tabular-nums">{m.streak_longest}</TableCell>
             <TableCell className="tabular-nums">{m.weight}</TableCell>
-            <TableCell className="tabular-nums">{m.solved ?? "—"}</TableCell>
+            <TableCell className="tabular-nums">{m.solved}</TableCell>
             <TableCell className="tabular-nums">
               <span className="flex items-center gap-1">
                 {m.freezes}
