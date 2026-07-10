@@ -3,6 +3,7 @@ import { DayCellSquare, HeatmapLegend } from "@/components/day-heatmap";
 import { LeetCodeStats } from "@/components/leetcode-stats";
 import { OutcomeRow, StatTiles, WeeklyTrendBars } from "@/components/stats-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { localDate } from "@/lib/core/dates";
 import type { DayStatus } from "@/lib/core/types";
 import { outcomeCounts, weekGrid, weeklyTrend } from "@/lib/stats";
@@ -57,11 +58,15 @@ export default async function MemberPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{username}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{username}</h1>
 
-      {/* ---------------- LeetStreak (this group) ---------------- */}
-      <h2 className="text-lg font-semibold">LeetStreak in this group</h2>
+      <Tabs defaultValue="leetstreak">
+        <TabsList>
+          <TabsTrigger value="leetstreak">This group</TabsTrigger>
+          <TabsTrigger value="leetcode">LeetCode</TabsTrigger>
+        </TabsList>
 
+        <TabsContent value="leetstreak" className="mt-4 flex flex-col gap-6">
       <StatTiles
         tiles={[
           ["Current streak", `🔥 ${member.streak_current}`],
@@ -118,12 +123,15 @@ export default async function MemberPage({
         </CardContent>
       </Card>
 
-      {/* ---------------- LeetCode ---------------- */}
-      <h2 className="text-lg font-semibold">LeetCode</h2>
-      <LeetCodeStats
-        username={leetcode_username}
-        missingHint={`${username} hasn't linked a LeetCode account.`}
-      />
+        </TabsContent>
+
+        <TabsContent value="leetcode" className="mt-4">
+          <LeetCodeStats
+            username={leetcode_username}
+            missingHint={`${username} hasn't linked a LeetCode account.`}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
