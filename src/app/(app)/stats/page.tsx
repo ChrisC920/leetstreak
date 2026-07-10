@@ -3,7 +3,9 @@ import Link from "next/link";
 import { DayCellSquare, HeatmapLegend } from "@/components/day-heatmap";
 import { LeetCodeStats } from "@/components/leetcode-stats";
 import { OutcomeRow, StatTiles, WeeklyTrendBars } from "@/components/stats-charts";
+import { BlurFade } from "@/components/ui/blur-fade";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { localDate } from "@/lib/core/dates";
 import type { DayStatus, Difficulty } from "@/lib/core/types";
 import { outcomeCounts, weekGrid, weeklyTrend } from "@/lib/stats";
@@ -99,11 +101,16 @@ export default async function StatsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Your stats</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Your stats</h1>
 
-      {/* ---------------- LeetStreak ---------------- */}
-      <h2 className="text-lg font-semibold">LeetStreak</h2>
+      <Tabs defaultValue="leetstreak">
+        <TabsList>
+          <TabsTrigger value="leetstreak">LeetStreak</TabsTrigger>
+          <TabsTrigger value="leetcode">LeetCode</TabsTrigger>
+        </TabsList>
 
+        <TabsContent value="leetstreak" className="mt-4 flex flex-col gap-6">
+      <BlurFade>
       <StatTiles
         tiles={[
           ["Current streak", `🔥 ${streakNow}`],
@@ -115,6 +122,7 @@ export default async function StatsPage() {
           ["Freezes banked", `🧊 ${freezesBanked}`],
         ]}
       />
+      </BlurFade>
 
       {outcome.settled > 0 && (
         <Card>
@@ -218,12 +226,15 @@ export default async function StatsPage() {
         </Card>
       )}
 
-      {/* ---------------- LeetCode ---------------- */}
-      <h2 className="text-lg font-semibold">LeetCode</h2>
-      <LeetCodeStats
-        username={profile?.leetcode_username ?? null}
-        missingHint="Set your LeetCode username in onboarding to see live profile stats."
-      />
+        </TabsContent>
+
+        <TabsContent value="leetcode" className="mt-4">
+          <LeetCodeStats
+            username={profile?.leetcode_username ?? null}
+            missingHint="Set your LeetCode username in onboarding to see live profile stats."
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

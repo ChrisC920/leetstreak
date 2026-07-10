@@ -2,15 +2,18 @@
 // bars are divs, identity lives in text labels (never color alone).
 
 import { Card, CardContent } from "@/components/ui/card";
+import { NumberTicker } from "@/components/ui/number-ticker";
 
-/** Row of headline stat cards. */
+/** Row of headline stat cards. Numeric values animate in with a ticker. */
 export function StatTiles({ tiles }: { tiles: [string, string | number][] }) {
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
       {tiles.map(([label, value]) => (
         <Card key={label}>
           <CardContent className="pt-4">
-            <p className="text-2xl font-semibold">{value}</p>
+            <p className="font-mono text-2xl font-semibold tabular-nums">
+              {typeof value === "number" ? <NumberTicker value={value} /> : value}
+            </p>
             <p className="text-sm text-muted-foreground">{label}</p>
           </CardContent>
         </Card>
