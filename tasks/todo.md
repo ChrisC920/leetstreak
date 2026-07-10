@@ -106,3 +106,11 @@ in HTML.
 
 Pre-existing, untouched: eslint error in `onboarding/page.tsx`
 (`react-hooks/set-state-in-effect`) — exists on main.
+
+## Review — 2026-07-10: Today cleanup, catch-up queue, group policies
+
+Branch feature/today-queue-policies (6 commits, d5ee35a..c8b14ec). All 8 plan tasks done; per-task reviews + final whole-branch review clean (READY TO MERGE). Tests 24/24, tsc clean, prod build green, lint has only the 3 pre-existing MagicUI errors.
+
+Shipped: hero gradient removed; font-mono only for invite codes; activity times in user tz (+"yesterday" prefix); catch-up queue sorted by grace deadline (red <24h) replacing repair banners; groups.grace_period_days/freeze_earn_interval/max_freezes columns (defaults 3/7/2) wired through core+settle+UI; leader manual freeze grants (RLS-checked, admin write); overflow regression tests.
+
+Known-minor (ship-as-is, upgrade paths noted in final review): freeze-cap TOCTOU on double-click; grantFreeze .single() vs .maybeSingle(); queue key latent collision; queue hides post-deadline solves that settle won't credit (cosmetic).
