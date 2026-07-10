@@ -1,20 +1,20 @@
 import type { DayStatus } from "@/lib/core/types";
 
-// Done days (complete/repaired) use an orange intensity ramp keyed on solve
+// Done days (complete/repaired) use an emerald intensity ramp keyed on solve
 // weight, matching the LeetCode heatmap's ramp convention (light→dark,
 // lightness-monotonic on both themes). Frozen/missed stay categorical; cells
 // carry title tooltips and pages render a legend — never color alone.
-const ORANGE_RAMP = ["#fed7aa", "#fb923c", "#ea580c", "#9a3412"];
+const EMERALD_RAMP = ["#a7f3d0", "#34d399", "#059669", "#065f46"];
 
 const STATUS_COLOR: Record<string, string> = {
-  frozen: "#0284c7",
-  missed: "#ef4444",
+  frozen: "#3b82f6",
+  missed: "#f43f5e",
 };
 
 function doneColor(weight: number | undefined, maxWeight: number): string {
-  if (weight == null || maxWeight <= 0) return ORANGE_RAMP[2];
+  if (weight == null || maxWeight <= 0) return EMERALD_RAMP[2];
   const t = weight / maxWeight;
-  return ORANGE_RAMP[Math.min(3, Math.floor(t * 4))];
+  return EMERALD_RAMP[Math.min(3, Math.floor(t * 4))];
 }
 
 export interface DayCell {
@@ -57,7 +57,7 @@ export function HeatmapLegend() {
     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
       <span className="flex items-center gap-1">
         done · less
-        {ORANGE_RAMP.map((c) => (
+        {EMERALD_RAMP.map((c) => (
           <span key={c} className="size-3 rounded-[2px]" style={{ backgroundColor: c }} />
         ))}
         more

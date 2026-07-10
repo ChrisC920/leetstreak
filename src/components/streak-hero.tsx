@@ -18,11 +18,11 @@ export function StreakHero({
       <CardContent className="grid grid-cols-3 gap-4">
         <div className="flex flex-col items-start gap-1">
           <div className="flex items-center gap-2">
-            <Flame className="flame-pulse size-8 text-orange-500 sm:size-10" aria-hidden />
+            <Flame className="flame-pulse size-8 text-amber-500 sm:size-10" aria-hidden />
             {/* NumberTicker renders 0 for value 0, fine */}
             <NumberTicker
               value={streak}
-              className="text-primary text-4xl font-bold tabular-nums sm:text-5xl"
+              className="font-mono text-4xl font-bold tracking-tight tabular-nums text-primary sm:text-5xl"
             />
           </div>
           <p className="text-sm text-muted-foreground">day streak</p>

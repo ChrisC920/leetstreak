@@ -49,10 +49,10 @@ export function OutcomeRow({
   counts: { complete: number; repaired: number; frozen: number; missed: number };
 }) {
   const segments = [
-    ["complete", counts.complete, "#16a34a"],
-    ["repaired", counts.repaired, "#4ade80"],
-    ["frozen", counts.frozen, "#0284c7"],
-    ["missed", counts.missed, "#ef4444"],
+    ["complete", counts.complete, "#059669"],
+    ["repaired", counts.repaired, "#34d399"],
+    ["frozen", counts.frozen, "#3b82f6"],
+    ["missed", counts.missed, "#f43f5e"],
   ] as const;
   const total = segments.reduce((s, [, n]) => s + n, 0);
 
@@ -137,7 +137,7 @@ export function WeeklyTrendBars({ weeks }: { weeks: { label: string; good: numbe
 
 // sequential green ramp, light→dark (lightness-monotonic); zero uses the muted
 // track like the streak heatmap. Cells carry title tooltips + a legend below.
-const INTENSITY = ["#bbf7d0", "#4ade80", "#16a34a", "#14532d"];
+const INTENSITY = ["#a7f3d0", "#34d399", "#059669", "#065f46"];
 
 function intensityColor(count: number, max: number): string | undefined {
   if (count <= 0) return undefined;
