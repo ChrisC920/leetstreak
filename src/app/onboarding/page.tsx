@@ -1,7 +1,7 @@
 "use client";
 
 import { Flame } from "lucide-react";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,10 +15,10 @@ export default function OnboardingPage() {
     completeOnboarding,
     {},
   );
-  const [timezone, setTimezone] = useState("UTC");
-  useEffect(() => {
-    setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
-  }, []);
+  // detected in the browser; SSR fallback is UTC, so suppress the mismatch
+  const [timezone] = useState(() =>
+    typeof window === "undefined" ? "UTC" : Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center gap-8 overflow-hidden p-8">
@@ -65,8 +65,8 @@ export default function OnboardingPage() {
                   Optional — without it you&apos;ll mark solves manually.
                 </p>
               </div>
-              <input type="hidden" name="timezone" value={timezone} />
-              <p className="text-xs text-muted-foreground">
+              <input type="hidden" name="timezone" value={timezone} suppressHydrationWarning />
+              <p className="text-xs text-muted-foreground" suppressHydrationWarning>
                 Your day ends at midnight in <span className="font-medium">{timezone}</span>.
               </p>
               {state.error && <p className="text-sm text-destructive">{state.error}</p>}
