@@ -1,15 +1,19 @@
-import { CheckCircle2, Circle, Flame, Snowflake, Users } from "lucide-react";
+import { CheckCircle2, Circle, Flame, RefreshCw, Snowflake, Users } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
+import { Countdown } from "@/components/countdown";
 import { DayCompleteConfetti } from "@/components/day-complete-confetti";
+import { EmptyState } from "@/components/empty-state";
+import { PageHeader } from "@/components/page-header";
+import { SectionCard } from "@/components/section-card";
 import { StreakHero } from "@/components/streak-hero";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { ShineBorder } from "@/components/ui/shine-border";
 import { addDays, canRepair, dayBounds, localDate } from "@/lib/core/dates";
 import type { Difficulty } from "@/lib/core/types";
 import { runSettle } from "@/lib/jobs/settle";
@@ -40,7 +44,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("timezone, leetcode_username, last_synced_at")
+    .select("username, timezone, leetcode_username, last_synced_at")
     .eq("id", user.id)
     .single();
   if (!profile) redirect("/onboarding");
@@ -53,21 +57,17 @@ export default async function DashboardPage() {
   if (!memberships || memberships.length === 0) {
     return (
       <BlurFade>
-        <Card className="mx-auto max-w-md">
-          <CardContent className="flex flex-col items-center gap-4 px-6 py-16 text-center">
-            <Users className="size-10 text-primary" aria-hidden />
-            <h2 className="text-2xl font-semibold">No group yet</h2>
-            <p className="text-muted-foreground">
-              Create a group and invite friends, or join one with an invite code.
-            </p>
-            <div className="flex gap-2">
-              <Button render={<Link href="/groups/new" />}>Create a group</Button>
-              <Button variant="outline" render={<Link href="/groups" />}>
-                Join a group
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Users}
+          title="No group yet"
+          description="Create a group and invite friends, or join one with an invite code."
+          className="mx-auto max-w-md"
+        >
+          <Button render={<Link href="/groups/new" />}>Create a group</Button>
+          <Button variant="outline" render={<Link href="/groups" />}>
+            Join a group
+          </Button>
+        </EmptyState>
       </BlurFade>
     );
   }
@@ -199,30 +199,54 @@ export default async function DashboardPage() {
   const doneSum = groupData.reduce((s, g) => s + g.weightDone, 0);
   const totalSum = groupData.reduce((s, g) => s + g.weightTotal, 0);
   const completionPct = totalSum > 0 ? Math.round((doneSum / totalSum) * 100) : 0;
+  const remainingCount = groupData.reduce(
+    (s, g) => s + g.todaysProblems.filter((p) => !solvedToday(p.id)).length,
+    0,
+  );
+  const hour = Number(formatInTimeZone(now, profile.timezone, "H"));
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const objective =
+    remainingCount === 0
+      ? totalSum > 0
+        ? "All problems done — streak safe."
+        : "Nothing assigned today."
+      : `${remainingCount} problem${remainingCount === 1 ? "" : "s"} left to keep your streak alive.`;
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Today <span className="text-lg text-muted-foreground">· {today}</span>
-        </h1>
-        <div className="flex items-center gap-2">
-          {profile.leetcode_username && <SyncButton />}
-        </div>
-      </div>
+      <PageHeader
+        title={`${greeting}, ${profile.username}`}
+        description={
+          <>
+            {objective} <Countdown target={dayEnd.toISOString()} />
+          </>
+        }
+        actions={profile.leetcode_username && <SyncButton />}
+      />
 
       <BlurFade>
-        <StreakHero streak={streakNow} freezes={freezesBanked} completionPct={completionPct} />
+        <div className="relative rounded-xl">
+          {completionPct === 100 && (
+            <ShineBorder borderWidth={2} duration={10} shineColor={["#34d399", "#3b82f6"]} />
+          )}
+          <StreakHero streak={streakNow} freezes={freezesBanked} completionPct={completionPct} />
+        </div>
       </BlurFade>
+
+      <div className="grid gap-6 lg:grid-cols-12">
+        <div className="flex flex-col gap-6 lg:col-span-8">
 
       {queue.length > 0 && (
         <BlurFade delay={0.05}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Catch-up queue</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-2 text-sm text-muted-foreground">
+          <SectionCard
+            title="Catch-up queue"
+            action={
+              <Badge variant="secondary" className="text-xs">
+                {queue.length} pending
+              </Badge>
+            }
+          >
+              <p className="text-sm text-muted-foreground">
                 Finish these before their grace period ends to repair your streak.
               </p>
               <ul className="divide-y">
@@ -258,8 +282,7 @@ export default async function DashboardPage() {
                   </li>
                 ))}
               </ul>
-            </CardContent>
-          </Card>
+          </SectionCard>
         </BlurFade>
       )}
 
@@ -267,23 +290,24 @@ export default async function DashboardPage() {
         ({ m, group, weights, todaysProblems, weightDone, weightTotal, allDone }, gi) => (
           <BlurFade key={m.group_id} delay={0.1 + gi * 0.05}>
             <DayCompleteConfetti fired={allDone} dayKey={`${m.group_id}-${today}`} />
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>
-                  <Link href={`/groups/${group.id}`} className="hover:underline">
-                    {group.name}
-                  </Link>
-                </CardTitle>
-                <div className="flex items-center gap-3 text-sm">
+            <SectionCard
+              title={
+                <Link href={`/groups/${group.id}`} className="text-lg hover:underline">
+                  {group.name}
+                </Link>
+              }
+              action={
+                <div className="flex items-center gap-3 font-mono text-sm tabular-nums">
                   <span title="current streak" className="flex items-center gap-1">
-                    <Flame className="size-4 text-orange-500" aria-hidden /> {m.streak_current}
+                    <Flame className="size-4 text-amber-500" aria-hidden /> {m.streak_current}
                   </span>
                   <span title="streak freezes" className="flex items-center gap-1">
-                    <Snowflake className="size-4 text-sky-400" aria-hidden /> {m.freezes}
+                    <Snowflake className="size-4 text-chart-2" aria-hidden /> {m.freezes}
                   </span>
                 </div>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4">
+              }
+            >
+              <>
                 {todaysProblems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No problems assigned today — playlist may be complete.
@@ -329,25 +353,23 @@ export default async function DashboardPage() {
                       ))}
                     </ul>
                     {allDone && (
-                      <p className="flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-500">
+                      <p className="flex items-center gap-1.5 text-sm font-medium text-primary">
                         <CheckCircle2 className="size-4" aria-hidden />
                         Day complete — streak safe.
                       </p>
                     )}
                   </>
                 )}
-              </CardContent>
-            </Card>
+              </>
+            </SectionCard>
           </BlurFade>
         ),
       )}
+        </div>
 
+        <div className="flex flex-col gap-6 lg:col-span-4">
       <BlurFade delay={0.2}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Friend activity (24h)</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <SectionCard title="Friend activity" action={<span className="text-xs text-muted-foreground">24h</span>}>
           {!activity || activity.length === 0 ? (
             <p className="text-sm text-muted-foreground">No activity from your groups yet.</p>
           ) : (
@@ -356,35 +378,78 @@ export default async function DashboardPage() {
                 const who = (a.profiles as unknown as { username: string })?.username;
                 const prob = a.problems as unknown as { title: string; slug: string };
                 return (
-                  <li key={i} className="flex items-center gap-2">
-                    <Avatar className="size-6">
-                      <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary uppercase">
-                        {(who ?? "?").slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="font-medium">{who}</span>
-                    <span>
-                      solved{" "}
-                      <a
-                        href={`https://leetcode.com/problems/${prob.slug}/`}
-                        target="_blank"
-                        className="font-medium hover:underline"
-                      >
-                        {prob.title}
-                      </a>
+                  <li key={i} className="flex flex-col gap-0.5">
+                    <span className="flex items-center gap-2">
+                      <Avatar className="size-6">
+                        <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary uppercase">
+                          {(who ?? "?").slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{who}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {localDate(new Date(a.solved_at), profile.timezone) !== today && "yesterday "}
+                        {formatInTimeZone(new Date(a.solved_at), profile.timezone, "h:mm a")}
+                      </span>
                     </span>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      {localDate(new Date(a.solved_at), profile.timezone) !== today && "yesterday "}
-                      {formatInTimeZone(new Date(a.solved_at), profile.timezone, "h:mm a")}
-                    </span>
+                    <a
+                      href={`https://leetcode.com/problems/${prob.slug}/`}
+                      target="_blank"
+                      className="truncate pl-8 text-muted-foreground hover:text-foreground hover:underline"
+                    >
+                      {prob.title}
+                    </a>
                   </li>
                 );
               })}
             </ul>
           )}
-        </CardContent>
-      </Card>
+      </SectionCard>
       </BlurFade>
+
+      <BlurFade delay={0.25}>
+        <SectionCard title="Sync">
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <RefreshCw className="size-3.5" aria-hidden />
+              {profile.last_synced_at
+                ? `Last synced ${formatInTimeZone(
+                    new Date(profile.last_synced_at),
+                    profile.timezone,
+                    "MMM d, h:mm a",
+                  )}`
+                : "Never synced"}
+            </span>
+            {profile.leetcode_username && <SyncButton />}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Solves sync automatically every night
+            {profile.leetcode_username ? ` for @${profile.leetcode_username}` : ""}.
+          </p>
+        </SectionCard>
+      </BlurFade>
+
+      <BlurFade delay={0.3}>
+        <SectionCard title="Your groups">
+          <ul className="flex flex-col gap-2 text-sm">
+            {groupData.map(({ group, m }) => (
+              <li key={group.id}>
+                <Link
+                  href={`/groups/${group.id}`}
+                  className="flex items-center justify-between rounded-lg border px-3 py-2 transition-colors hover:bg-accent"
+                >
+                  <span className="truncate font-medium">{group.name}</span>
+                  <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground tabular-nums">
+                    <Flame className="size-3.5 text-amber-500" aria-hidden />
+                    {m.streak_current}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      </BlurFade>
+        </div>
+      </div>
     </div>
   );
 }
