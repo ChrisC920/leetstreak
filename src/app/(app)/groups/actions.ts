@@ -100,14 +100,52 @@ export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
 
-  // RLS: only own non-leader membership rows are deletable
-  const { error, count } = await supabase
-    .from("group_members")
-    .delete({ count: "exact" })
-    .eq("group_id", groupId)
-    .eq("user_id", user.id);
-  if (error) return { error: error.message };
-  if (!count) return { error: "Leaders can't leave their own group" };
+  const { data: group } = await supabase
+    .from("groups")
+    .select("leader_id")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (!group) return { error: "Group not found" };
+
+  if (group.leader_id === user.id) {
+    // leader leaves: hand the group to the longest-standing member, or delete
+    // it when they're the last one. RLS blocks this path, so it runs on the
+    // admin client after the explicit leader check above.
+    const admin = adminClient();
+    const { data: heir } = await admin
+      .from("group_members")
+      .select("user_id")
+      .eq("group_id", groupId)
+      .neq("user_id", user.id)
+      .order("joined_at")
+      .limit(1)
+      .maybeSingle();
+    if (heir) {
+      const { error } = await admin
+        .from("groups")
+        .update({ leader_id: heir.user_id })
+        .eq("id", groupId);
+      if (error) return { error: error.message };
+      const { error: delError } = await admin
+        .from("group_members")
+        .delete()
+        .eq("group_id", groupId)
+        .eq("user_id", user.id);
+      if (delError) return { error: delError.message };
+    } else {
+      const { error } = await admin.from("groups").delete().eq("id", groupId);
+      if (error) return { error: error.message };
+    }
+  } else {
+    // RLS: only own non-leader membership rows are deletable
+    const { error, count } = await supabase
+      .from("group_members")
+      .delete({ count: "exact" })
+      .eq("group_id", groupId)
+      .eq("user_id", user.id);
+    if (error) return { error: error.message };
+    if (!count) return { error: "Couldn't leave this group" };
+  }
   redirect("/groups");
 }
 

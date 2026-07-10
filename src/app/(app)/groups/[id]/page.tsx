@@ -123,7 +123,17 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
           <Countdown target={settlement.toISOString()} />
         </div>
         <div className="flex items-center gap-2">
-          {!isLeader && <LeaveButton groupId={id} groupName={group.name} />}
+          <LeaveButton
+            groupId={id}
+            groupName={group.name}
+            description={
+              !isLeader
+                ? undefined
+                : (members ?? []).length > 1
+                  ? "Leadership passes to the longest-standing member. Your streak and history in this group will be deleted. This can't be undone."
+                  : "You're the only member, so the group and all its history will be deleted. This can't be undone."
+            }
+          />
           <InviteCode code={group.invite_code} />
         </div>
       </div>

@@ -15,7 +15,15 @@ import {
 } from "@/components/ui/dialog";
 import { leaveGroup } from "../actions";
 
-export function LeaveButton({ groupId, groupName }: { groupId: string; groupName: string }) {
+export function LeaveButton({
+  groupId,
+  groupName,
+  description = "Your streak and history in this group will be deleted. This can't be undone.",
+}: {
+  groupId: string;
+  groupName: string;
+  description?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [leaving, startTransition] = useTransition();
 
@@ -30,9 +38,7 @@ export function LeaveButton({ groupId, groupName }: { groupId: string; groupName
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Leave {groupName}?</DialogTitle>
-          <DialogDescription>
-            Your streak and history in this group will be deleted. This can&apos;t be undone.
-          </DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
