@@ -72,6 +72,23 @@ describe("generateAssignment (ordered)", () => {
     expect(problemIds).toEqual([]);
     expect(newCursor).toBe(6);
   });
+
+  it("overflows the target by one problem rather than stopping short", () => {
+    const hards: ProblemRef[] = [
+      { id: "h0", difficulty: "hard" },
+      { id: "h1", difficulty: "hard" },
+      { id: "h2", difficulty: "hard" },
+    ];
+    const { problemIds } = generateAssignment({
+      playlist: hards,
+      cursor: 0,
+      mode: "ordered",
+      weights: { easy: 1, medium: 2, hard: 3 },
+      target: 8,
+    });
+    // 3 + 3 = 6 < 8, so a third hard is added: total 9 > 8. Overflow allowed.
+    expect(problemIds).toEqual(["h0", "h1", "h2"]);
+  });
 });
 
 describe("generateAssignment (random)", () => {
@@ -105,6 +122,24 @@ describe("generateAssignment (random)", () => {
       rng: () => 0,
     });
     expect(problemIds).toEqual(["p5"]);
+  });
+
+  it("random mode also overflows the target by one problem", () => {
+    const hards: ProblemRef[] = [
+      { id: "h0", difficulty: "hard" },
+      { id: "h1", difficulty: "hard" },
+      { id: "h2", difficulty: "hard" },
+      { id: "h3", difficulty: "hard" },
+    ];
+    const { problemIds } = generateAssignment({
+      playlist: hards,
+      cursor: 0,
+      mode: "random",
+      weights: { easy: 1, medium: 2, hard: 3 },
+      target: 8,
+      rng: () => 0,
+    });
+    expect(problemIds).toHaveLength(3); // 9 weight total
   });
 });
 
