@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowDownWideNarrow, Shuffle } from "lucide-react";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { createGroup, type GroupFormState } from "../actions";
 
 interface Playlist {
@@ -18,11 +20,26 @@ interface Playlist {
   name: string;
 }
 
+const MODES = [
+  {
+    value: "ordered",
+    label: "Playlist order",
+    hint: "Everyone works through the list front to back.",
+    icon: ArrowDownWideNarrow,
+  },
+  {
+    value: "random",
+    label: "Random each day",
+    hint: "A fresh surprise pick every morning.",
+    icon: Shuffle,
+  },
+] as const;
+
 export function CreateGroupForm({ playlists }: { playlists: Playlist[] }) {
   const [state, formAction, pending] = useActionState<GroupFormState, FormData>(createGroup, {});
 
   return (
-    <form action={formAction} className="flex max-w-md flex-col gap-4">
+    <form action={formAction} className="flex max-w-md flex-col gap-5">
       <div className="flex flex-col gap-2">
         <Label htmlFor="name">Group name</Label>
         <Input id="name" name="name" required placeholder="grind squad" />
@@ -44,18 +61,33 @@ export function CreateGroupForm({ playlists }: { playlists: Playlist[] }) {
         </Select>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="mode">Order</Label>
-        <Select name="mode" defaultValue="ordered">
-          <SelectTrigger id="mode" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ordered">Playlist order</SelectItem>
-            <SelectItem value="random">Random each day</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-2 text-sm font-medium">Order</legend>
+        <div className="grid grid-cols-2 gap-2">
+          {MODES.map(({ value, label, hint, icon: Icon }) => (
+            <label
+              key={value}
+              className="flex cursor-pointer flex-col gap-1.5 rounded-xl border p-3 transition-colors hover:bg-accent has-checked:border-primary has-checked:bg-primary/5"
+            >
+              <input
+                type="radio"
+                name="mode"
+                value={value}
+                defaultChecked={value === "ordered"}
+                className="sr-only"
+              />
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <Icon className="size-4 text-primary" aria-hidden />
+                {label}
+              </span>
+              <span className="text-xs text-muted-foreground">{hint}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <Separator />
+      <p className="text-sm font-medium">Daily workload</p>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="daily_target_weight">Daily weight target</Label>
@@ -87,6 +119,9 @@ export function CreateGroupForm({ playlists }: { playlists: Playlist[] }) {
           </div>
         ))}
       </div>
+
+      <Separator />
+      <p className="text-sm font-medium">Streak policy</p>
 
       <div className="grid grid-cols-3 gap-2">
         {(
