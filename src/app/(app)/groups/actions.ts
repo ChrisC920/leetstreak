@@ -79,6 +79,9 @@ export async function updateGroup(
       weight_easy: Number(formData.get("weight_easy") || 1),
       weight_medium: Number(formData.get("weight_medium") || 2),
       weight_hard: Number(formData.get("weight_hard") || 4),
+      grace_period_days: Number(formData.get("grace_period_days") ?? 3),
+      freeze_earn_interval: Number(formData.get("freeze_earn_interval") || 7),
+      max_freezes: Number(formData.get("max_freezes") ?? 2),
     })
     .eq("id", groupId);
   if (error) return { error: error.message };

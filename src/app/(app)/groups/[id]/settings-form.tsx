@@ -21,6 +21,9 @@ interface GroupSettings {
   weight_easy: number;
   weight_medium: number;
   weight_hard: number;
+  grace_period_days: number;
+  freeze_earn_interval: number;
+  max_freezes: number;
 }
 
 export function SettingsForm({ group }: { group: GroupSettings }) {
@@ -67,6 +70,20 @@ export function SettingsForm({ group }: { group: GroupSettings }) {
           <div key={name} className="flex flex-col gap-2">
             <Label htmlFor={name}>{label}</Label>
             <Input id={name} name={name} type="number" min={1} max={10} defaultValue={def} />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {(
+          [
+            ["grace_period_days", "Grace period (days)", group.grace_period_days, 0, 14],
+            ["freeze_earn_interval", "Freeze every (days)", group.freeze_earn_interval, 1, 30],
+            ["max_freezes", "Max freezes", group.max_freezes, 0, 10],
+          ] as const
+        ).map(([name, label, def, min, max]) => (
+          <div key={name} className="flex flex-col gap-2">
+            <Label htmlFor={name}>{label}</Label>
+            <Input id={name} name={name} type="number" min={min} max={max} defaultValue={def} />
           </div>
         ))}
       </div>
