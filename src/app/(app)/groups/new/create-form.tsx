@@ -88,6 +88,21 @@ export function CreateGroupForm({ playlists }: { playlists: Playlist[] }) {
         ))}
       </div>
 
+      <div className="grid grid-cols-3 gap-2">
+        {(
+          [
+            ["grace_period_days", "Grace period (days)", 3, 0, 14],
+            ["freeze_earn_interval", "Freeze every (days)", 7, 1, 30],
+            ["max_freezes", "Max freezes", 2, 0, 10],
+          ] as const
+        ).map(([name, label, def, min, max]) => (
+          <div key={name} className="flex flex-col gap-2">
+            <Label htmlFor={name}>{label}</Label>
+            <Input id={name} name={name} type="number" min={min} max={max} defaultValue={def} />
+          </div>
+        ))}
+      </div>
+
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
       <Button type="submit" disabled={pending}>
         {pending ? "Creating…" : "Create group"}
