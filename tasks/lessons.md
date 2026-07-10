@@ -42,3 +42,20 @@
   transaction-local `set role` / `set_config('request.jwt.claims',...,true)`
   don't reliably carry across the statements in one batch. Reproduce RLS via
   the **live REST API with a real user token**, not SQL simulation.
+
+## UI design direction (2026-07-09)
+
+- **Correction**: first ember pass leaned on gradient text, animated gradient
+  pills, and warm-tinted palette. User pulled it back: "cleaner, successful
+  startup feel" — no excessive gradients, cleaner font.
+- **Rule**: default to restrained startup aesthetic (Linear/Vercel register):
+  neutral zero-chroma palette, ONE accent color used sparingly, solid-color
+  logo/heading accents instead of gradient text, Inter for sans.
+- **Rule**: prefer prebuilt shadcn/MagicUI components over hand-rolled ones;
+  animations via `motion` (Framer Motion) — MagicUI wrappers (BlurFade,
+  NumberTicker) already use it.
+- **Rule**: product asset generation goes through higgsfield MCP
+  (`generate_image`, model `gpt_image_2`); serve the `_min.webp` variant.
+- **Rule**: dev server must run via tmux (hook enforces); the hook regex
+  blocks any command containing the npm dev-script invocation even inside a
+  tmux wrapper — launch with `npx next dev` instead.
