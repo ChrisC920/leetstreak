@@ -109,32 +109,6 @@ export function HBar({
   );
 }
 
-/** Column bars for good-days-per-week (0–7) on muted tracks, oldest → newest. */
-export function WeeklyTrendBars({ weeks }: { weeks: { label: string; good: number }[] }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex h-24 items-end gap-1.5">
-        {weeks.map((w) => (
-          <div
-            key={w.label}
-            title={`week of ${w.label}: ${w.good}/7 good days`}
-            className="relative flex-1 self-stretch overflow-hidden rounded-sm bg-muted"
-          >
-            <div
-              className="absolute inset-x-0 bottom-0 rounded-sm bg-primary"
-              style={{ height: `${Math.max((w.good / 7) * 100, w.good > 0 ? 6 : 0)}%` }}
-            />
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-between text-[10px] text-muted-foreground">
-        <span>{weeks[0]?.label}</span>
-        <span>{weeks[weeks.length - 1]?.label}</span>
-      </div>
-    </div>
-  );
-}
-
 // sequential green ramp, light→dark (lightness-monotonic); zero uses the muted
 // track like the streak heatmap. Cells carry title tooltips + a legend below.
 const INTENSITY = ["#a7f3d0", "#34d399", "#059669", "#065f46"];
