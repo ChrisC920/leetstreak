@@ -18,7 +18,7 @@ import { addDays, canRepair, dayBounds, localDate } from "@/lib/core/dates";
 import type { Difficulty } from "@/lib/core/types";
 import { runSettle } from "@/lib/jobs/settle";
 import { serverClient } from "@/lib/supabase/server";
-import { MarkSolvedButton, SyncButton } from "./sync-button";
+import { MarkSolvedButton, SyncButton, UseFreezeButton } from "./sync-button";
 
 export const dynamic = "force-dynamic";
 
@@ -187,6 +187,20 @@ export default async function DashboardPage() {
     )
     .sort((a, b) => a.deadline.getTime() - b.deadline.getTime());
 
+  // missed days a banked freeze could still cover
+  const freezeDays = groupData
+    .filter(({ m }) => (m.freezes ?? 0) > 0)
+    .flatMap(({ m, group }) =>
+      (memberDays ?? [])
+        .filter(
+          (d) =>
+            d.group_id === m.group_id &&
+            d.status === "missed" &&
+            canRepair(d.date, today, group.grace_period_days),
+        )
+        .map((d) => ({ groupId: group.id, groupName: group.name, date: d.date as string })),
+    );
+
   const hoursLeft = (deadline: Date) =>
     Math.max(0, Math.floor((deadline.getTime() - now.getTime()) / 3_600_000));
   const expiresIn = (deadline: Date) => {
@@ -236,7 +250,7 @@ export default async function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-6 lg:col-span-8">
 
-      {queue.length > 0 && (
+      {(queue.length > 0 || freezeDays.length > 0) && (
         <BlurFade delay={0.05}>
           <SectionCard
             title="Catch-up queue"
@@ -282,6 +296,24 @@ export default async function DashboardPage() {
                   </li>
                 ))}
               </ul>
+              {freezeDays.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+                  <span className="text-sm text-muted-foreground">
+                    Or spend a banked freeze to save the day:
+                  </span>
+                  {freezeDays.map((f) => (
+                    <UseFreezeButton
+                      key={`${f.groupId}-${f.date}`}
+                      groupId={f.groupId}
+                      date={f.date}
+                      label={
+                        formatInTimeZone(new Date(`${f.date}T12:00:00Z`), "UTC", "MMM d") +
+                        (groupData.length > 1 ? ` · ${f.groupName}` : "")
+                      }
+                    />
+                  ))}
+                </div>
+              )}
           </SectionCard>
         </BlurFade>
       )}
