@@ -36,7 +36,7 @@ export default async function MemberPage({
       .maybeSingle(),
     supabase
       .from("member_days")
-      .select("date, status")
+      .select("date, status, weight_done")
       .eq("group_id", id)
       .eq("user_id", uid),
     supabase.from("profiles").select("timezone").eq("id", user.id).single(),
@@ -50,6 +50,10 @@ export default async function MemberPage({
   };
 
   const statusByDate = new Map<string, DayStatus>((days ?? []).map((d) => [d.date, d.status]));
+  const weightByDate = new Map<string, number>(
+    (days ?? []).map((d) => [d.date, d.weight_done ?? 0]),
+  );
+  const maxDayWeight = Math.max(0, ...weightByDate.values());
 
   const today = localDate(new Date(), profile?.timezone ?? "UTC");
   const weeks = weekGrid(today, WEEKS);
@@ -113,7 +117,13 @@ export default async function MemberPage({
               {weeks.map((col, i) => (
                 <div key={i} className="flex flex-col gap-[2px]">
                   {col.map((date) => (
-                    <DayCellSquare key={date} date={date} status={statusByDate.get(date)} />
+                    <DayCellSquare
+                      key={date}
+                      date={date}
+                      status={statusByDate.get(date)}
+                      weight={weightByDate.get(date)}
+                      maxWeight={maxDayWeight}
+                    />
                   ))}
                 </div>
               ))}

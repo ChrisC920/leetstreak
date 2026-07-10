@@ -40,11 +40,13 @@ export function Leaderboard({
   groupId,
   leaderId,
   stripDays,
+  maxDayWeight = 0,
 }: {
   rows: LeaderboardRow[];
   groupId: string;
   leaderId: string;
   stripDays: number;
+  maxDayWeight?: number;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("streak_current");
   const sorted = [...rows].sort((a, b) => (b[sortKey] ?? -1) - (a[sortKey] ?? -1));
@@ -110,7 +112,7 @@ export function Leaderboard({
             <TableCell className="font-mono tabular-nums">{m.solved ?? "—"}</TableCell>
             <TableCell className="font-mono tabular-nums">{m.freezes}</TableCell>
             <TableCell>
-              <DayStrip cells={m.cells} />
+              <DayStrip cells={m.cells} maxWeight={maxDayWeight} />
             </TableCell>
           </TableRow>
         ))}

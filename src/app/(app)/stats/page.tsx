@@ -44,7 +44,7 @@ export default async function StatsPage() {
   const [{ data: profile }, { data: days }, { data: memberships }, { data: solves }] =
     await Promise.all([
       supabase.from("profiles").select("timezone, leetcode_username").eq("id", user.id).single(),
-      supabase.from("member_days").select("date, status, group_id").eq("user_id", user.id),
+      supabase.from("member_days").select("date, status, group_id, weight_done").eq("user_id", user.id),
       supabase
         .from("group_members")
         .select("streak_current, streak_longest, freezes, group_id, groups(id, name)")
@@ -66,12 +66,15 @@ export default async function StatsPage() {
   // ---- LeetStreak: derived stats -------------------------------------------
 
   const bestByDate = new Map<string, DayStatus>();
+  const weightByDate = new Map<string, number>();
   for (const d of days ?? []) {
     const prev = bestByDate.get(d.date);
     if (!prev || RANK.indexOf(d.status) < RANK.indexOf(prev)) {
       bestByDate.set(d.date, d.status);
     }
+    weightByDate.set(d.date, (weightByDate.get(d.date) ?? 0) + (d.weight_done ?? 0));
   }
+  const maxDayWeight = Math.max(0, ...weightByDate.values());
 
   const today = localDate(new Date(), timezone);
   const streakWeeks = weekGrid(today, WEEKS);
@@ -160,7 +163,13 @@ export default async function StatsPage() {
               {streakWeeks.map((col, i) => (
                 <div key={i} className="flex flex-col gap-[2px]">
                   {col.map((date) => (
-                    <DayCellSquare key={date} date={date} status={bestByDate.get(date)} />
+                    <DayCellSquare
+                      key={date}
+                      date={date}
+                      status={bestByDate.get(date)}
+                      weight={weightByDate.get(date)}
+                      maxWeight={maxDayWeight}
+                    />
                   ))}
                 </div>
               ))}

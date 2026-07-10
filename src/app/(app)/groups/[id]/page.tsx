@@ -45,11 +45,13 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     addDays(today, i - (STRIP_DAYS - 1)),
   );
 
-  const dayByUser = new Map<string, Map<string, DayStatus>>();
+  const dayByUser = new Map<string, Map<string, { status: DayStatus; weight: number }>>();
   const weeklyWeight = new Map<string, number>();
+  let maxDayWeight = 0;
   for (const d of days ?? []) {
     if (!dayByUser.has(d.user_id)) dayByUser.set(d.user_id, new Map());
-    dayByUser.get(d.user_id)!.set(d.date, d.status);
+    dayByUser.get(d.user_id)!.set(d.date, { status: d.status, weight: d.weight_done ?? 0 });
+    maxDayWeight = Math.max(maxDayWeight, d.weight_done ?? 0);
     if (d.date >= weekAgo && d.date <= today) {
       weeklyWeight.set(d.user_id, (weeklyWeight.get(d.user_id) ?? 0) + (d.weight_done ?? 0));
     }
@@ -78,9 +80,10 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     freezes: m.freezes,
     weight: weeklyWeight.get(m.user_id) ?? 0,
     solved: solvedByUser.get(m.user_id) ?? null,
-    cells: stripDates.map(
-      (date): DayCell => ({ date, status: dayByUser.get(m.user_id)?.get(date) }),
-    ),
+    cells: stripDates.map((date): DayCell => {
+      const day = dayByUser.get(m.user_id)?.get(date);
+      return { date, status: day?.status, weight: day?.weight };
+    }),
   }));
 
   const isLeader = group.leader_id === user.id;
@@ -113,6 +116,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                   groupId={id}
                   leaderId={group.leader_id}
                   stripDays={STRIP_DAYS}
+                  maxDayWeight={maxDayWeight}
                 />
               </div>
               <div className="mt-3">
