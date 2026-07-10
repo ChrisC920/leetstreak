@@ -204,7 +204,7 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">
-          Today <span className="font-mono text-lg text-muted-foreground">· {today}</span>
+          Today <span className="text-lg text-muted-foreground">· {today}</span>
         </h1>
         <div className="flex items-center gap-2">
           {profile.leetcode_username && <SyncButton />}
@@ -274,7 +274,7 @@ export default async function DashboardPage() {
                     {group.name}
                   </Link>
                 </CardTitle>
-                <div className="flex items-center gap-3 font-mono text-sm">
+                <div className="flex items-center gap-3 text-sm">
                   <span title="current streak" className="flex items-center gap-1">
                     <Flame className="size-4 text-orange-500" aria-hidden /> {m.streak_current}
                   </span>
@@ -295,7 +295,7 @@ export default async function DashboardPage() {
                         value={(weightDone / Math.max(weightTotal, 1)) * 100}
                         className="h-2"
                       />
-                      <span className="whitespace-nowrap font-mono text-sm text-muted-foreground">
+                      <span className="whitespace-nowrap text-sm text-muted-foreground">
                         {weightDone}/{weightTotal} weight
                       </span>
                     </div>

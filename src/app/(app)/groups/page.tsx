@@ -60,7 +60,7 @@ export default async function GroupsPage() {
                   <Card className="h-full transition-all hover:-translate-y-0.5 hover:border-primary/40">
                     <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle className="text-lg">{g.name}</CardTitle>
-                      <span className="flex items-center gap-1 font-mono text-lg font-semibold">
+                      <span className="flex items-center gap-1 text-lg font-semibold">
                         <Flame className="size-5 text-orange-500" aria-hidden />
                         {m.streak_current}
                       </span>

@@ -229,7 +229,7 @@ export default async function StatsPage() {
                     <Icon className="size-4.5 text-primary" aria-hidden />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-mono text-lg font-semibold tabular-nums">{value}</p>
+                    <p className="text-lg font-semibold tabular-nums">{value}</p>
                     <p className="truncate text-sm text-muted-foreground">{label}</p>
                   </div>
                 </div>
@@ -265,24 +265,24 @@ export default async function StatsPage() {
                         {group.name}
                       </Link>
                       {r && r.size > 1 && (
-                        <Badge variant="secondary" className="shrink-0 font-mono">
+                        <Badge variant="secondary" className="shrink-0">
                           #{r.rank}/{r.size}
                         </Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1 font-mono">
+                      <span className="flex items-center gap-1">
                         <Flame className="size-3.5 text-orange-500" aria-hidden />
                         {m.streak_current}
                       </span>
-                      <span className="flex items-center gap-1 font-mono">
+                      <span className="flex items-center gap-1">
                         <Trophy className="size-3.5" aria-hidden />
                         {m.streak_longest}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Progress value={pct ?? 0} className="h-1.5" />
-                      <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                      <span className="shrink-0 text-xs text-muted-foreground">
                         {pct !== null ? `${pct}%` : "—"}
                       </span>
                     </div>

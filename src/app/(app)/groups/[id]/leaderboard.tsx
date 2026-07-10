@@ -89,7 +89,7 @@ export function Leaderboard({
         {sorted.map((m, rank) => (
           <TableRow key={m.user_id}>
             <TableCell
-              className={`font-mono tabular-nums ${
+              className={`tabular-nums ${
                 rank === 0 ? "font-semibold text-primary" : "text-muted-foreground"
               }`}
             >
@@ -111,10 +111,10 @@ export function Leaderboard({
                 )}
               </Link>
             </TableCell>
-            <TableCell className="font-mono tabular-nums">{m.streak_current}</TableCell>
-            <TableCell className="font-mono tabular-nums">{m.streak_longest}</TableCell>
-            <TableCell className="font-mono tabular-nums">{m.weight}</TableCell>
-            <TableCell className="font-mono tabular-nums">{m.solved ?? "—"}</TableCell>
+            <TableCell className="tabular-nums">{m.streak_current}</TableCell>
+            <TableCell className="tabular-nums">{m.streak_longest}</TableCell>
+            <TableCell className="tabular-nums">{m.weight}</TableCell>
+            <TableCell className="tabular-nums">{m.solved ?? "—"}</TableCell>
             <TableCell className="tabular-nums">
               <span className="flex items-center gap-1">
                 {m.freezes}

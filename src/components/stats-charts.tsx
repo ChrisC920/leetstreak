@@ -29,7 +29,7 @@ export function StatTiles({ tiles }: { tiles: StatTile[] }) {
               </div>
             )}
             <div className="min-w-0">
-              <p className="font-mono text-2xl font-semibold tabular-nums">
+              <p className="text-2xl font-semibold tabular-nums">
                 {typeof value === "number" ? <NumberTicker value={value} /> : value}
                 {suffix && <span className="text-lg text-muted-foreground">{suffix}</span>}
               </p>
@@ -75,7 +75,7 @@ export function OutcomeRow({
         {segments.map(([label, count, color]) => (
           <span key={label} className="flex items-center gap-1.5">
             <span className="size-2.5 rounded-full" style={{ backgroundColor: color }} />
-            <span className="font-mono tabular-nums">{count}</span>
+            <span className="tabular-nums">{count}</span>
             <span className="text-muted-foreground">{label}</span>
           </span>
         ))}
@@ -101,7 +101,7 @@ export function HBar({
     <div className="flex items-center gap-3 text-sm">
       <span className="w-28 shrink-0 truncate text-muted-foreground">{label}</span>
       <Progress value={pct} className="h-2 flex-1" />
-      <span className="w-24 shrink-0 text-right font-mono tabular-nums">
+      <span className="w-24 shrink-0 text-right tabular-nums">
         {value.toLocaleString()}
         {detail && <span className="text-xs text-muted-foreground"> {detail}</span>}
       </span>
@@ -127,7 +127,7 @@ export function WeeklyTrendBars({ weeks }: { weeks: { label: string; good: numbe
           </div>
         ))}
       </div>
-      <div className="flex justify-between font-mono text-[10px] text-muted-foreground">
+      <div className="flex justify-between text-[10px] text-muted-foreground">
         <span>{weeks[0]?.label}</span>
         <span>{weeks[weeks.length - 1]?.label}</span>
       </div>

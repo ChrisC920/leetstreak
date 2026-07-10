@@ -22,7 +22,7 @@ export function StreakHero({
             {/* NumberTicker renders 0 for value 0, fine */}
             <NumberTicker
               value={streak}
-              className="text-primary font-mono text-4xl font-bold tabular-nums sm:text-5xl"
+              className="text-primary text-4xl font-bold tabular-nums sm:text-5xl"
             />
           </div>
           <p className="text-sm text-muted-foreground">day streak</p>
@@ -32,7 +32,7 @@ export function StreakHero({
             <Snowflake className="size-5 text-sky-400" aria-hidden />
             <NumberTicker
               value={freezes}
-              className="font-mono text-2xl font-semibold tabular-nums sm:text-3xl"
+              className="text-2xl font-semibold tabular-nums sm:text-3xl"
             />
           </div>
           <p className="text-sm text-muted-foreground sm:text-center">freezes banked</p>
@@ -40,7 +40,7 @@ export function StreakHero({
         <div className="flex flex-col items-start gap-1 sm:items-end">
           <div className="flex h-10 items-center gap-1 sm:h-12">
             <Target className="size-5 text-primary" aria-hidden />
-            <span className="font-mono text-2xl font-semibold tabular-nums sm:text-3xl">
+            <span className="text-2xl font-semibold tabular-nums sm:text-3xl">
               <NumberTicker value={completionPct} />%
             </span>
           </div>
