@@ -1,5 +1,48 @@
-// Small server-rendered chart primitives for the stats page. No chart lib;
+// Small server-rendered chart primitives for the stats pages. No chart lib;
 // bars are divs, identity lives in text labels (never color alone).
+
+import { Card, CardContent } from "@/components/ui/card";
+
+/** Row of headline stat cards. */
+export function StatTiles({ tiles }: { tiles: [string, string | number][] }) {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {tiles.map(([label, value]) => (
+        <Card key={label}>
+          <CardContent className="pt-4">
+            <p className="text-2xl font-semibold">{value}</p>
+            <p className="text-sm text-muted-foreground">{label}</p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/** Colored swatch row of settled-day outcome counts (status palette). */
+export function OutcomeRow({
+  counts,
+}: {
+  counts: { complete: number; repaired: number; frozen: number; missed: number };
+}) {
+  return (
+    <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+      {(
+        [
+          ["complete", counts.complete, "#16a34a"],
+          ["repaired", counts.repaired, "#16a34a"],
+          ["frozen", counts.frozen, "#0284c7"],
+          ["missed", counts.missed, "#ef4444"],
+        ] as const
+      ).map(([label, count, color]) => (
+        <span key={label} className="flex items-center gap-1.5">
+          <span className="size-3 rounded-[2px]" style={{ backgroundColor: color }} />
+          {count} {label}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 /** Horizontal bar: label left, track middle, value right. Single series. */
 export function HBar({

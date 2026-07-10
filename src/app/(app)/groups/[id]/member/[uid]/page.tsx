@@ -1,13 +1,17 @@
 import { notFound, redirect } from "next/navigation";
 import { DayCellSquare, HeatmapLegend } from "@/components/day-heatmap";
+import { LeetCodeStats } from "@/components/leetcode-stats";
+import { OutcomeRow, StatTiles, WeeklyTrendBars } from "@/components/stats-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { addDays, localDate } from "@/lib/core/dates";
-import { leetcodeSolvedBreakdown, type SolvedBreakdown } from "@/lib/leetcode";
+import { localDate } from "@/lib/core/dates";
+import type { DayStatus } from "@/lib/core/types";
+import { outcomeCounts, weekGrid, weeklyTrend } from "@/lib/stats";
 import { serverClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 const WEEKS = 26;
+const TREND_WEEKS = 12;
 
 export default async function MemberPage({
   params,
@@ -43,52 +47,42 @@ export default async function MemberPage({
     leetcode_username: string | null;
   };
 
-  let breakdown: SolvedBreakdown | null = null;
-  if (leetcode_username) {
-    try {
-      breakdown = await leetcodeSolvedBreakdown(leetcode_username, 600);
-    } catch {
-      // private/renamed profile or API down — omit the live tiles
-    }
-  }
-
-  const statusByDate = new Map((days ?? []).map((d) => [d.date, d.status]));
+  const statusByDate = new Map<string, DayStatus>((days ?? []).map((d) => [d.date, d.status]));
 
   const today = localDate(new Date(), profile?.timezone ?? "UTC");
-  const todayDow = new Date(`${today}T00:00:00Z`).getUTCDay();
-  const gridStart = addDays(today, -(WEEKS * 7 - 1) - todayDow);
-  const weeks = Array.from({ length: WEEKS + 1 }, (_, w) =>
-    Array.from({ length: 7 }, (_, d) => addDays(gridStart, w * 7 + d)).filter(
-      (date) => date <= today,
-    ),
-  ).filter((col) => col.length > 0);
-
-  const tiles: [string, string | number][] = [
-    ["Current streak", `🔥 ${member.streak_current}`],
-    ["Longest streak", member.streak_longest],
-    ["Freezes", member.freezes],
-    ["Problems solved", breakdown?.all ?? "—"],
-  ];
+  const weeks = weekGrid(today, WEEKS);
+  const outcome = outcomeCounts(statusByDate.values());
+  const goodDays = outcome.settled - outcome.missed;
+  const trend = weeklyTrend(statusByDate, today, TREND_WEEKS);
 
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">{username}</h1>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {tiles.map(([label, value]) => (
-          <Card key={label}>
-            <CardContent className="pt-4">
-              <p className="text-2xl font-semibold">{value}</p>
-              <p className="text-sm text-muted-foreground">{label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* ---------------- LeetStreak (this group) ---------------- */}
+      <h2 className="text-lg font-semibold">LeetStreak in this group</h2>
 
-      {breakdown && (
-        <p className="text-sm text-muted-foreground">
-          Easy {breakdown.easy} · Medium {breakdown.medium} · Hard {breakdown.hard}
-        </p>
+      <StatTiles
+        tiles={[
+          ["Current streak", `🔥 ${member.streak_current}`],
+          ["Longest streak", member.streak_longest],
+          [
+            "Completion rate",
+            outcome.settled > 0 ? `${Math.round((goodDays / outcome.settled) * 100)}%` : "—",
+          ],
+          ["Freezes banked", `🧊 ${member.freezes}`],
+        ]}
+      />
+
+      {outcome.settled > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Day outcomes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <OutcomeRow counts={outcome} />
+          </CardContent>
+        </Card>
       )}
 
       <Card>
@@ -110,6 +104,26 @@ export default async function MemberPage({
           <HeatmapLegend />
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Weekly consistency</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <WeeklyTrendBars weeks={trend} />
+          <p className="text-xs text-muted-foreground">
+            Good days per week (complete, repaired, or frozen) over the last {TREND_WEEKS} weeks,
+            oldest to newest.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* ---------------- LeetCode ---------------- */}
+      <h2 className="text-lg font-semibold">LeetCode</h2>
+      <LeetCodeStats
+        username={leetcode_username}
+        missingHint={`${username} hasn't linked a LeetCode account.`}
+      />
     </div>
   );
 }
