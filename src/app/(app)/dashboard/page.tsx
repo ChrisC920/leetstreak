@@ -1,6 +1,11 @@
+import { CheckCircle2, Circle, Flame, Snowflake, Users } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { DayCompleteConfetti } from "@/components/day-complete-confetti";
+import { StreakHero } from "@/components/streak-hero";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { BlurFade } from "@/components/ui/blur-fade";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -46,18 +51,21 @@ export default async function DashboardPage() {
 
   if (!memberships || memberships.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-4 py-24 text-center">
-        <h2 className="text-2xl font-semibold">No group yet</h2>
-        <p className="text-muted-foreground">
-          Create a group and invite friends, or join one with an invite code.
-        </p>
-        <div className="flex gap-2">
-          <Button render={<Link href="/groups/new" />}>Create a group</Button>
-          <Button variant="outline" render={<Link href="/groups" />}>
-            Join a group
-          </Button>
+      <BlurFade>
+        <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-xl border bg-card px-6 py-20 text-center">
+          <Users className="size-10 text-primary" aria-hidden />
+          <h2 className="text-2xl font-semibold">No group yet</h2>
+          <p className="text-muted-foreground">
+            Create a group and invite friends, or join one with an invite code.
+          </p>
+          <div className="flex gap-2">
+            <Button render={<Link href="/groups/new" />}>Create a group</Button>
+            <Button variant="outline" render={<Link href="/groups" />}>
+              Join a group
+            </Button>
+          </div>
         </div>
-      </div>
+      </BlurFade>
     );
   }
 
@@ -111,141 +119,178 @@ export default async function DashboardPage() {
     .order("solved_at", { ascending: false })
     .limit(20);
 
+  const groupData = memberships.map((m) => {
+    const group = m.groups as unknown as {
+      id: string;
+      name: string;
+      daily_target_weight: number;
+      weight_easy: number;
+      weight_medium: number;
+      weight_hard: number;
+    };
+    const weights = {
+      easy: group.weight_easy,
+      medium: group.weight_medium,
+      hard: group.weight_hard,
+    };
+    const assignment = (assignments ?? []).find(
+      (a) => a.group_id === m.group_id && a.date === today,
+    );
+    const todaysProblems = ((assignment?.problem_ids as string[]) ?? [])
+      .map((id) => problemById.get(id))
+      .filter((p): p is Problem => p !== undefined);
+    const weightDone = todaysProblems
+      .filter((p) => solvedToday(p.id))
+      .reduce((s, p) => s + weights[p.difficulty], 0);
+    const weightTotal = todaysProblems.reduce((s, p) => s + weights[p.difficulty], 0);
+    const allDone = todaysProblems.length > 0 && todaysProblems.every((p) => solvedToday(p.id));
+
+    const backlog = (memberDays ?? [])
+      .filter(
+        (d) =>
+          d.group_id === m.group_id &&
+          d.status === "missed" &&
+          canRepair(d.date, today),
+      )
+      .map((d) => ({
+        date: d.date as string,
+        problems: (
+          ((assignments ?? []).find(
+            (a) => a.group_id === m.group_id && a.date === d.date,
+          )?.problem_ids as string[]) ?? []
+        )
+          .map((id) => problemById.get(id))
+          .filter((p): p is Problem => p !== undefined && !solvedAt.has(p.id)),
+      }))
+      .filter((b) => b.problems.length > 0);
+
+    return { m, group, weights, todaysProblems, weightDone, weightTotal, allDone, backlog };
+  });
+
+  const streakNow = Math.max(0, ...memberships.map((m) => m.streak_current));
+  const freezesBanked = Math.max(0, ...memberships.map((m) => m.freezes ?? 0));
+  const doneSum = groupData.reduce((s, g) => s + g.weightDone, 0);
+  const totalSum = groupData.reduce((s, g) => s + g.weightTotal, 0);
+  const completionPct = totalSum > 0 ? Math.round((doneSum / totalSum) * 100) : 0;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Today · {today}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Today <span className="font-mono text-lg text-muted-foreground">· {today}</span>
+        </h1>
         <div className="flex items-center gap-2">
           {profile.leetcode_username && <SyncButton />}
         </div>
       </div>
 
-      {memberships.map((m) => {
-        const group = m.groups as unknown as {
-          id: string;
-          name: string;
-          daily_target_weight: number;
-          weight_easy: number;
-          weight_medium: number;
-          weight_hard: number;
-        };
-        const weights = {
-          easy: group.weight_easy,
-          medium: group.weight_medium,
-          hard: group.weight_hard,
-        };
-        const assignment = (assignments ?? []).find(
-          (a) => a.group_id === m.group_id && a.date === today,
-        );
-        const todaysProblems = ((assignment?.problem_ids as string[]) ?? [])
-          .map((id) => problemById.get(id))
-          .filter((p): p is Problem => p !== undefined);
-        const weightDone = todaysProblems
-          .filter((p) => solvedToday(p.id))
-          .reduce((s, p) => s + weights[p.difficulty], 0);
-        const weightTotal = todaysProblems.reduce((s, p) => s + weights[p.difficulty], 0);
-        const allDone = todaysProblems.length > 0 && todaysProblems.every((p) => solvedToday(p.id));
+      <BlurFade>
+        <StreakHero streak={streakNow} freezes={freezesBanked} completionPct={completionPct} />
+      </BlurFade>
 
-        const backlog = (memberDays ?? [])
-          .filter(
-            (d) =>
-              d.group_id === m.group_id &&
-              d.status === "missed" &&
-              canRepair(d.date, today),
-          )
-          .map((d) => ({
-            date: d.date as string,
-            problems: (
-              ((assignments ?? []).find(
-                (a) => a.group_id === m.group_id && a.date === d.date,
-              )?.problem_ids as string[]) ?? []
-            )
-              .map((id) => problemById.get(id))
-              .filter((p): p is Problem => p !== undefined && !solvedAt.has(p.id)),
-          }))
-          .filter((b) => b.problems.length > 0);
-
-        return (
-          <Card key={m.group_id}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>
-                <Link href={`/groups/${group.id}`} className="hover:underline">
-                  {group.name}
-                </Link>
-              </CardTitle>
-              <div className="flex items-center gap-3 text-sm">
-                <span title="current streak">🔥 {m.streak_current}</span>
-                <span title="streak freezes">🧊 {m.freezes}</span>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              {backlog.map((b) => (
-                <div key={b.date} className="rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3 text-sm">
-                  <p className="font-medium">
-                    Repair your streak: finish {b.date}&apos;s problems within 3 days of the miss.
-                  </p>
-                  <ul className="mt-1 list-inside list-disc">
-                    {b.problems.map((p) => (
-                      <li key={p.id}>
-                        <a
-                          className="underline"
-                          href={`https://leetcode.com/problems/${p.slug}/`}
-                          target="_blank"
-                        >
-                          {p.title}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
+      {groupData.map(
+        ({ m, group, weights, todaysProblems, weightDone, weightTotal, allDone, backlog }, gi) => (
+          <BlurFade key={m.group_id} delay={0.1 + gi * 0.05}>
+            <DayCompleteConfetti fired={allDone} dayKey={`${m.group_id}-${today}`} />
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>
+                  <Link href={`/groups/${group.id}`} className="hover:underline">
+                    {group.name}
+                  </Link>
+                </CardTitle>
+                <div className="flex items-center gap-3 font-mono text-sm">
+                  <span title="current streak" className="flex items-center gap-1">
+                    <Flame className="size-4 text-orange-500" aria-hidden /> {m.streak_current}
+                  </span>
+                  <span title="streak freezes" className="flex items-center gap-1">
+                    <Snowflake className="size-4 text-sky-400" aria-hidden /> {m.freezes}
+                  </span>
                 </div>
-              ))}
-
-              {todaysProblems.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No problems assigned today — playlist may be complete. 🎉
-                </p>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3">
-                    <Progress value={(weightDone / Math.max(weightTotal, 1)) * 100} className="h-2" />
-                    <span className="whitespace-nowrap text-sm text-muted-foreground">
-                      {weightDone}/{weightTotal} weight
-                    </span>
-                  </div>
-                  <ul className="divide-y">
-                    {todaysProblems.map((p) => (
-                      <li key={p.id} className="flex items-center justify-between py-2">
-                        <div className="flex items-center gap-3">
-                          <span className={solvedToday(p.id) ? "" : "opacity-30"}>
-                            {solvedToday(p.id) ? "✅" : "⬜"}
-                          </span>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                {backlog.map((b) => (
+                  <div
+                    key={b.date}
+                    className="rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3 text-sm"
+                  >
+                    <p className="font-medium">
+                      Repair your streak: finish {b.date}&apos;s problems within 3 days of the miss.
+                    </p>
+                    <ul className="mt-1 list-inside list-disc">
+                      {b.problems.map((p) => (
+                        <li key={p.id}>
                           <a
+                            className="underline"
                             href={`https://leetcode.com/problems/${p.slug}/`}
                             target="_blank"
-                            className="font-medium hover:underline"
                           >
                             {p.title}
                           </a>
-                          <span className={`text-xs ${DIFF_COLOR[p.difficulty]}`}>
-                            {p.difficulty} · {weights[p.difficulty]}w
-                          </span>
-                        </div>
-                        {!solvedToday(p.id) && <MarkSolvedButton problemId={p.id} />}
-                      </li>
-                    ))}
-                  </ul>
-                  {allDone && (
-                    <p className="text-sm font-medium text-green-600">
-                      Day complete — streak safe. 🔥
-                    </p>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
 
+                {todaysProblems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No problems assigned today — playlist may be complete. 🎉
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <Progress
+                        value={(weightDone / Math.max(weightTotal, 1)) * 100}
+                        className="h-2"
+                      />
+                      <span className="whitespace-nowrap font-mono text-sm text-muted-foreground">
+                        {weightDone}/{weightTotal} weight
+                      </span>
+                    </div>
+                    <ul className="divide-y">
+                      {todaysProblems.map((p) => (
+                        <li key={p.id} className="flex items-center justify-between py-2.5">
+                          <div className="flex items-center gap-3">
+                            {solvedToday(p.id) ? (
+                              <CheckCircle2 className="size-5 text-primary" aria-hidden />
+                            ) : (
+                              <Circle className="size-5 text-muted-foreground/40" aria-hidden />
+                            )}
+                            <a
+                              href={`https://leetcode.com/problems/${p.slug}/`}
+                              target="_blank"
+                              className={`font-medium hover:underline ${
+                                solvedToday(p.id) ? "text-muted-foreground line-through" : ""
+                              }`}
+                            >
+                              {p.title}
+                            </a>
+                            <Badge
+                              variant="secondary"
+                              className={`text-xs ${DIFF_COLOR[p.difficulty]}`}
+                            >
+                              {p.difficulty} · {weights[p.difficulty]}w
+                            </Badge>
+                          </div>
+                          {!solvedToday(p.id) && <MarkSolvedButton problemId={p.id} />}
+                        </li>
+                      ))}
+                    </ul>
+                    {allDone && (
+                      <p className="text-sm font-medium text-green-600 dark:text-green-500">
+                        Day complete — streak safe. 🔥
+                      </p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </BlurFade>
+        ),
+      )}
+
+      <BlurFade delay={0.2}>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Friend activity (24h)</CardTitle>
@@ -254,13 +299,18 @@ export default async function DashboardPage() {
           {!activity || activity.length === 0 ? (
             <p className="text-sm text-muted-foreground">No activity from your groups yet.</p>
           ) : (
-            <ul className="flex flex-col gap-2 text-sm">
+            <ul className="flex flex-col gap-2.5 text-sm">
               {activity.map((a, i) => {
                 const who = (a.profiles as unknown as { username: string })?.username;
                 const prob = a.problems as unknown as { title: string; slug: string };
                 return (
                   <li key={i} className="flex items-center gap-2">
-                    <Badge variant="secondary">{who}</Badge>
+                    <Avatar className="size-6">
+                      <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary uppercase">
+                        {(who ?? "?").slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium">{who}</span>
                     <span>
                       solved{" "}
                       <a
@@ -284,6 +334,7 @@ export default async function DashboardPage() {
           )}
         </CardContent>
       </Card>
+      </BlurFade>
     </div>
   );
 }
