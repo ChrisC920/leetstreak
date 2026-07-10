@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { runSettle } from "@/lib/jobs/settle";
+import { adminClient } from "@/lib/supabase/admin";
 import { serverClient } from "@/lib/supabase/server";
 
 export interface GroupFormState {
@@ -84,6 +85,45 @@ export async function updateGroup(
       max_freezes: Number(formData.get("max_freezes") ?? 2),
     })
     .eq("id", groupId);
+  if (error) return { error: error.message };
+  revalidatePath(`/groups/${groupId}`);
+  return {};
+}
+
+export async function grantFreeze(
+  groupId: string,
+  userId: string,
+): Promise<{ error?: string }> {
+  const supabase = await serverClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("leader_id, max_freezes")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (!group || group.leader_id !== user.id) return { error: "Only the leader can grant freezes" };
+
+  // group_members RLS only lets users touch their own row; leader grants go
+  // through the admin client after the explicit leader check above.
+  const admin = adminClient();
+  const { data: member } = await admin
+    .from("group_members")
+    .select("freezes")
+    .eq("group_id", groupId)
+    .eq("user_id", userId)
+    .single();
+  if (!member) return { error: "Member not found" };
+  if (member.freezes >= group.max_freezes) return { error: "Member is already at max freezes" };
+
+  const { error } = await admin
+    .from("group_members")
+    .update({ freezes: member.freezes + 1 })
+    .eq("group_id", groupId)
+    .eq("user_id", userId);
   if (error) return { error: error.message };
   revalidatePath(`/groups/${groupId}`);
   return {};

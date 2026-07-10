@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowDown, Crown, Flame, Snowflake, type LucideIcon } from "lucide-react";
+import { ArrowDown, Crown, Flame, Plus, Snowflake, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import { DayStrip, type DayCell } from "@/components/day-heatmap";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { grantFreeze } from "../actions";
 
 export interface LeaderboardRow {
   user_id: string;
@@ -41,14 +43,17 @@ export function Leaderboard({
   leaderId,
   stripDays,
   maxDayWeight = 0,
+  isLeader,
 }: {
   rows: LeaderboardRow[];
   groupId: string;
   leaderId: string;
   stripDays: number;
   maxDayWeight?: number;
+  isLeader?: boolean;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("streak_current");
+  const [granting, startTransition] = useTransition();
   const sorted = [...rows].sort((a, b) => (b[sortKey] ?? -1) - (a[sortKey] ?? -1));
 
   return (
@@ -110,7 +115,29 @@ export function Leaderboard({
             <TableCell className="font-mono tabular-nums">{m.streak_longest}</TableCell>
             <TableCell className="font-mono tabular-nums">{m.weight}</TableCell>
             <TableCell className="font-mono tabular-nums">{m.solved ?? "—"}</TableCell>
-            <TableCell className="font-mono tabular-nums">{m.freezes}</TableCell>
+            <TableCell className="tabular-nums">
+              <span className="flex items-center gap-1">
+                {m.freezes}
+                {isLeader && (
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    disabled={granting}
+                    title="Give a freeze"
+                    onClick={() =>
+                      startTransition(async () => {
+                        const { error } = await grantFreeze(groupId, m.user_id);
+                        if (error) toast.error(error);
+                        else toast.success(`Gave ${m.username} a freeze`);
+                      })
+                    }
+                  >
+                    <Plus className="size-3" aria-hidden />
+                    <Snowflake className="size-3.5 text-sky-400" aria-hidden />
+                  </Button>
+                )}
+              </span>
+            </TableCell>
             <TableCell>
               <DayStrip cells={m.cells} maxWeight={maxDayWeight} />
             </TableCell>

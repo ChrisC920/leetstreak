@@ -117,6 +117,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                   leaderId={group.leader_id}
                   stripDays={STRIP_DAYS}
                   maxDayWeight={maxDayWeight}
+                  isLeader={isLeader}
                 />
               </div>
               <div className="mt-3">
