@@ -1,6 +1,18 @@
+import { Flame } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AppNav } from "@/components/app-nav";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { serverClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -26,30 +38,47 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-4xl items-center justify-between p-4">
-          <nav className="flex items-center gap-6">
-            <Link href="/dashboard" className="font-bold">
-              leet<span className="text-orange-500">streak</span>
+      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3 sm:gap-6">
+            <Link href="/dashboard" className="flex items-center gap-1 font-bold">
+              <span>
+                leet<span className="streak-gradient">streak</span>
+              </span>
+              <Flame className="flame-pulse size-4 text-orange-500" aria-hidden />
             </Link>
-            <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
-              Today
-            </Link>
-            <Link href="/groups" className="text-sm text-muted-foreground hover:text-foreground">
-              Groups
-            </Link>
-            <Link href="/stats" className="text-sm text-muted-foreground hover:text-foreground">
-              Stats
-            </Link>
-          </nav>
-          <form action={signOut}>
-            <Button variant="ghost" size="sm" type="submit">
-              Sign out · {profile.username}
-            </Button>
-          </form>
+            <AppNav />
+          </div>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="ghost" size="icon" aria-label="Account menu" />
+                }
+              >
+                <Avatar className="size-7">
+                  <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary uppercase">
+                    {profile.username.slice(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{profile.username}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <form action={signOut}>
+                  <DropdownMenuItem
+                    render={<button type="submit" className="w-full" />}
+                  >
+                    Sign out
+                  </DropdownMenuItem>
+                </form>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
-      <main className="mx-auto max-w-4xl p-4">{children}</main>
+      <main className="mx-auto w-full max-w-5xl p-4 sm:p-6">{children}</main>
     </div>
   );
 }
