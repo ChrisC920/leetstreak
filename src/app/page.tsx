@@ -3,7 +3,9 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { BlurFade } from "@/components/ui/blur-fade";
+import { Card, CardContent } from "@/components/ui/card";
 import { GridPattern } from "@/components/ui/grid-pattern";
+import { MagicCard } from "@/components/ui/magic-card";
 import { serverClient } from "@/lib/supabase/server";
 import { LoginForm } from "./login-form";
 
@@ -76,26 +78,30 @@ export default async function Home({
 
       <div className="grid w-full max-w-3xl gap-4 sm:grid-cols-3">
         {FEATURES.map((f, i) => (
-          <BlurFade key={f.title} delay={0.25 + i * 0.08}>
-            <div className="flex h-full flex-col items-center gap-2 rounded-xl border bg-card p-5 text-center">
-              <f.icon className="size-5 text-primary" aria-hidden />
-              <p className="font-medium">{f.title}</p>
-              <p className="text-sm text-muted-foreground">{f.text}</p>
-            </div>
+          <BlurFade key={f.title} delay={0.25 + i * 0.08} className="h-full">
+            <MagicCard className="h-full rounded-xl">
+              <div className="flex h-full flex-col items-center gap-2 p-5 text-center">
+                <f.icon className="size-5 text-primary" aria-hidden />
+                <p className="font-medium">{f.title}</p>
+                <p className="text-sm text-muted-foreground">{f.text}</p>
+              </div>
+            </MagicCard>
           </BlurFade>
         ))}
       </div>
 
       <BlurFade delay={0.5} className="w-full max-w-sm">
-        <div className="flex w-full flex-col items-center gap-4 rounded-xl border bg-card p-6">
-          {error === "auth" && (
-            <p className="text-center text-sm text-destructive">
-              That sign-in link didn&apos;t work — it may have expired or been opened in a
-              different browser than the one you requested it from. Request a fresh one below.
-            </p>
-          )}
-          <LoginForm />
-        </div>
+        <Card className="w-full">
+          <CardContent className="flex flex-col items-center gap-4">
+            {error === "auth" && (
+              <p className="text-center text-sm text-destructive">
+                That sign-in link didn&apos;t work — it may have expired or been opened in a
+                different browser than the one you requested it from. Request a fresh one below.
+              </p>
+            )}
+            <LoginForm />
+          </CardContent>
+        </Card>
       </BlurFade>
     </main>
   );

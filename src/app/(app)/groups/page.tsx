@@ -34,13 +34,15 @@ export default async function GroupsPage() {
 
       {(memberships ?? []).length === 0 ? (
         <BlurFade>
-          <div className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-xl border bg-card px-6 py-16 text-center">
-            <Users className="size-10 text-primary" aria-hidden />
-            <p className="font-medium">You&apos;re not in any group yet.</p>
-            <p className="text-sm text-muted-foreground">
-              Create one and invite friends, or join with an invite code.
-            </p>
-          </div>
+          <Card className="mx-auto max-w-md">
+            <CardContent className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+              <Users className="size-10 text-primary" aria-hidden />
+              <p className="font-medium">You&apos;re not in any group yet.</p>
+              <p className="text-sm text-muted-foreground">
+                Create one and invite friends, or join with an invite code.
+              </p>
+            </CardContent>
+          </Card>
         </BlurFade>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

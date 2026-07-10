@@ -52,19 +52,21 @@ export default async function DashboardPage() {
   if (!memberships || memberships.length === 0) {
     return (
       <BlurFade>
-        <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-xl border bg-card px-6 py-20 text-center">
-          <Users className="size-10 text-primary" aria-hidden />
-          <h2 className="text-2xl font-semibold">No group yet</h2>
-          <p className="text-muted-foreground">
-            Create a group and invite friends, or join one with an invite code.
-          </p>
-          <div className="flex gap-2">
-            <Button render={<Link href="/groups/new" />}>Create a group</Button>
-            <Button variant="outline" render={<Link href="/groups" />}>
-              Join a group
-            </Button>
-          </div>
-        </div>
+        <Card className="mx-auto max-w-md">
+          <CardContent className="flex flex-col items-center gap-4 px-6 py-16 text-center">
+            <Users className="size-10 text-primary" aria-hidden />
+            <h2 className="text-2xl font-semibold">No group yet</h2>
+            <p className="text-muted-foreground">
+              Create a group and invite friends, or join one with an invite code.
+            </p>
+            <div className="flex gap-2">
+              <Button render={<Link href="/groups/new" />}>Create a group</Button>
+              <Button variant="outline" render={<Link href="/groups" />}>
+                Join a group
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </BlurFade>
     );
   }

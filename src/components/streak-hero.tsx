@@ -1,6 +1,7 @@
 "use client";
 
 import { Flame, Snowflake, Target } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { NumberTicker } from "@/components/ui/number-ticker";
 
 export function StreakHero({
@@ -13,12 +14,12 @@ export function StreakHero({
   completionPct: number;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border bg-card p-6">
+    <Card className="relative overflow-hidden">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_80%_at_20%_0%,--alpha(var(--color-primary)/12%),transparent)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_80%_at_20%_0%,--alpha(var(--color-primary)/10%),transparent)]"
       />
-      <div className="relative grid grid-cols-3 gap-4">
+      <CardContent className="relative grid grid-cols-3 gap-4">
         <div className="flex flex-col items-start gap-1">
           <div className="flex items-center gap-2">
             <Flame className="flame-pulse size-8 text-orange-500 sm:size-10" aria-hidden />
@@ -49,7 +50,7 @@ export function StreakHero({
           </div>
           <p className="text-sm text-muted-foreground sm:text-right">of today done</p>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

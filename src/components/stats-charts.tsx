@@ -3,6 +3,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { NumberTicker } from "@/components/ui/number-ticker";
+import { Progress } from "@/components/ui/progress";
 
 /** Row of headline stat cards. Numeric values animate in with a ticker. */
 export function StatTiles({ tiles }: { tiles: [string, string | number][] }) {
@@ -63,10 +64,8 @@ export function HBar({
   return (
     <div className="flex items-center gap-3 text-sm">
       <span className="w-28 shrink-0 truncate text-muted-foreground">{label}</span>
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-      </div>
-      <span className="w-24 shrink-0 text-right tabular-nums">
+      <Progress value={pct} className="h-2 flex-1" />
+      <span className="w-24 shrink-0 text-right font-mono tabular-nums">
         {value.toLocaleString()}
         {detail && <span className="text-xs text-muted-foreground"> {detail}</span>}
       </span>

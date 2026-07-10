@@ -1,8 +1,19 @@
 "use client";
 
+import { ArrowDown, Crown } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { DayStrip, type DayCell } from "@/components/day-heatmap";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export interface LeaderboardRow {
   user_id: string;
@@ -39,48 +50,57 @@ export function Leaderboard({
   const sorted = [...rows].sort((a, b) => (b[sortKey] ?? -1) - (a[sortKey] ?? -1));
 
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="text-left text-muted-foreground">
-          <th className="pb-2 font-medium">Member</th>
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead>Member</TableHead>
           {COLUMNS.map(([key, label]) => (
-            <th key={key} className="pb-2 font-medium">
-              <button
-                type="button"
+            <TableHead key={key}>
+              <Button
+                variant="ghost"
+                size="xs"
                 onClick={() => setSortKey(key)}
-                className={`hover:text-foreground ${sortKey === key ? "text-foreground" : ""}`}
+                className={`-ml-2 gap-1 ${sortKey === key ? "text-foreground" : "text-muted-foreground"}`}
               >
                 {label}
-                {sortKey === key && " ↓"}
-              </button>
-            </th>
+                {sortKey === key && <ArrowDown className="size-3" aria-hidden />}
+              </Button>
+            </TableHead>
           ))}
-          <th className="pb-2 font-medium">🧊</th>
-          <th className="pb-2 font-medium">Last {stripDays} days</th>
-        </tr>
-      </thead>
-      <tbody>
+          <TableHead>🧊</TableHead>
+          <TableHead>Last {stripDays} days</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {sorted.map((m) => (
-          <tr key={m.user_id} className="border-t">
-            <td className="py-2 font-medium">
-              <Link href={`/groups/${groupId}/member/${m.user_id}`} className="hover:underline">
+          <TableRow key={m.user_id}>
+            <TableCell className="font-medium">
+              <Link
+                href={`/groups/${groupId}/member/${m.user_id}`}
+                className="flex items-center gap-2 hover:underline"
+              >
+                <Avatar className="size-6">
+                  <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary uppercase">
+                    {m.username.slice(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
                 {m.username}
+                {m.user_id === leaderId && (
+                  <Crown className="size-3.5 text-primary" aria-label="group leader" />
+                )}
               </Link>
-              {m.user_id === leaderId && (
-                <span className="ml-1 text-xs text-muted-foreground">(leader)</span>
-              )}
-            </td>
-            <td className="py-2">{m.streak_current}</td>
-            <td className="py-2">{m.streak_longest}</td>
-            <td className="py-2">{m.weight}</td>
-            <td className="py-2">{m.solved ?? "—"}</td>
-            <td className="py-2">{m.freezes}</td>
-            <td className="py-2">
+            </TableCell>
+            <TableCell className="font-mono tabular-nums">{m.streak_current}</TableCell>
+            <TableCell className="font-mono tabular-nums">{m.streak_longest}</TableCell>
+            <TableCell className="font-mono tabular-nums">{m.weight}</TableCell>
+            <TableCell className="font-mono tabular-nums">{m.solved ?? "—"}</TableCell>
+            <TableCell className="font-mono tabular-nums">{m.freezes}</TableCell>
+            <TableCell>
               <DayStrip cells={m.cells} />
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }
