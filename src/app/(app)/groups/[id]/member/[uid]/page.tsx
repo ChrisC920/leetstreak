@@ -1,9 +1,13 @@
 import { Flame, Snowflake, Target, Trophy } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { DayCellSquare, HeatmapLegend } from "@/components/day-heatmap";
+import { KpiCard } from "@/components/kpi-card";
 import { LeetCodeStats } from "@/components/leetcode-stats";
-import { OutcomeRow, StatTiles, WeeklyTrendBars } from "@/components/stats-charts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SectionCard } from "@/components/section-card";
+import { StatRing } from "@/components/stat-ring";
+import { OutcomeRow } from "@/components/stats-charts";
+import { WeeklyTrendChart } from "@/components/trend-charts";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { localDate } from "@/lib/core/dates";
 import type { DayStatus } from "@/lib/core/types";
@@ -61,9 +65,19 @@ export default async function MemberPage({
   const goodDays = outcome.settled - outcome.missed;
   const trend = weeklyTrend(statusByDate, today, TREND_WEEKS);
 
+  const completionPct =
+    outcome.settled > 0 ? Math.round((goodDays / outcome.settled) * 100) : null;
+
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{username}</h1>
+      <div className="flex items-center gap-3">
+        <Avatar className="size-10">
+          <AvatarFallback className="bg-primary/15 font-semibold text-primary uppercase">
+            {username.slice(0, 2)}
+          </AvatarFallback>
+        </Avatar>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{username}</h1>
+      </div>
 
       <Tabs defaultValue="leetstreak">
         <TabsList>
@@ -72,46 +86,30 @@ export default async function MemberPage({
         </TabsList>
 
         <TabsContent value="leetstreak" className="mt-4 flex flex-col gap-6">
-      <StatTiles
-        tiles={[
-          {
-            label: "Current streak",
-            value: member.streak_current,
-            icon: Flame,
-            iconClassName: "text-orange-500",
-          },
-          { label: "Longest streak", value: member.streak_longest, icon: Trophy },
-          {
-            label: "Completion rate",
-            value: outcome.settled > 0 ? Math.round((goodDays / outcome.settled) * 100) : "—",
-            suffix: outcome.settled > 0 ? "%" : undefined,
-            icon: Target,
-          },
-          {
-            label: "Freezes banked",
-            value: member.freezes,
-            icon: Snowflake,
-            iconClassName: "text-sky-400",
-          },
-        ]}
-      />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard
+          label="Current streak"
+          value={member.streak_current}
+          icon={Flame}
+          accent="amber"
+        />
+        <KpiCard
+          label="Longest streak"
+          value={member.streak_longest}
+          icon={Trophy}
+          accent="violet"
+        />
+        <KpiCard
+          label="Completion rate"
+          value={completionPct ?? "—"}
+          suffix={completionPct !== null ? "%" : undefined}
+          icon={Target}
+          accent="emerald"
+        />
+        <KpiCard label="Freezes banked" value={member.freezes} icon={Snowflake} accent="blue" />
+      </div>
 
-      {outcome.settled > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Day outcomes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <OutcomeRow counts={outcome} />
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Last {WEEKS} weeks</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+      <SectionCard title={`Last ${WEEKS} weeks`}>
           <div className="overflow-x-auto">
             <div className="flex gap-[2px]">
               {weeks.map((col, i) => (
@@ -130,21 +128,34 @@ export default async function MemberPage({
             </div>
           </div>
           <HeatmapLegend />
-        </CardContent>
-      </Card>
+      </SectionCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Weekly consistency</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          <WeeklyTrendBars weeks={trend} />
-          <p className="text-xs text-muted-foreground">
-            Good days per week (complete, repaired, or frozen) over the last {TREND_WEEKS} weeks,
-            oldest to newest.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 md:grid-cols-2">
+        <SectionCard title="Weekly consistency">
+            <WeeklyTrendChart weeks={trend} />
+            <p className="text-xs text-muted-foreground">
+              Good days per week (complete, repaired, or frozen) over the last {TREND_WEEKS} weeks,
+              oldest to newest.
+            </p>
+        </SectionCard>
+
+        {outcome.settled > 0 && (
+          <SectionCard title="Day outcomes">
+            <div className="flex items-center gap-6">
+              <StatRing
+                value={completionPct ?? 0}
+                label="Completion"
+                sublabel="good days"
+                size={120}
+                className="shrink-0"
+              />
+              <div className="min-w-0 flex-1">
+                <OutcomeRow counts={outcome} />
+              </div>
+            </div>
+          </SectionCard>
+        )}
+      </div>
 
         </TabsContent>
 

@@ -1,8 +1,12 @@
 import { notFound, redirect } from "next/navigation";
+import { Countdown } from "@/components/countdown";
 import { HeatmapLegend, type DayCell } from "@/components/day-heatmap";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SectionCard } from "@/components/section-card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addDays, localDate } from "@/lib/core/dates";
+import { addDays, dayBounds, localDate } from "@/lib/core/dates";
 import type { DayStatus } from "@/lib/core/types";
 import { serverClient } from "@/lib/supabase/server";
 import { InviteCode } from "./invite-code";
@@ -71,6 +75,11 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     solvedByUser.set(s.user_id, (solvedByUser.get(s.user_id) ?? 0) + 1);
   }
 
+  const doneToday = (uid: string) => {
+    const s = dayByUser.get(uid)?.get(today)?.status;
+    return s === "complete" || s === "repaired";
+  };
+
   const rows: LeaderboardRow[] = (members ?? []).map((m) => ({
     user_id: m.user_id,
     username: (m.profiles as unknown as { username: string })?.username,
@@ -79,29 +88,72 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
     freezes: m.freezes,
     weight: weeklyWeight.get(m.user_id) ?? 0,
     solved: solvedByUser.get(m.user_id) ?? 0,
+    doneToday: doneToday(m.user_id),
     cells: stripDates.map((date): DayCell => {
       const day = dayByUser.get(m.user_id)?.get(date);
       return { date, status: day?.status, weight: day?.weight };
     }),
   }));
 
+  const missingToday = rows.filter((r) => !r.doneToday);
+  const settlement = dayBounds(today, profile?.timezone ?? "UTC").end;
   const isLeader = group.leader_id === user.id;
+
+  const policyPills = [
+    (group.playlists as unknown as { name: string }).name,
+    group.mode === "ordered" ? "playlist order" : "random daily",
+    `${group.daily_target_weight} weight/day`,
+    `${group.grace_period_days}d grace`,
+    `freeze every ${group.freeze_earn_interval}d`,
+    `max ${group.max_freezes} freezes`,
+  ];
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{group.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {(group.playlists as unknown as { name: string }).name} · {group.mode} ·{" "}
-            {group.daily_target_weight} weight/day
-          </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{group.name}</h1>
+          <div className="flex flex-wrap gap-1.5">
+            {policyPills.map((p) => (
+              <Badge key={p} variant="secondary" className="font-normal">
+                {p}
+              </Badge>
+            ))}
+          </div>
+          <Countdown target={settlement.toISOString()} />
         </div>
         <div className="flex items-center gap-2">
           {!isLeader && <LeaveButton groupId={id} groupName={group.name} />}
           <InviteCode code={group.invite_code} />
         </div>
       </div>
+
+      {missingToday.length > 0 && missingToday.length < rows.length && (
+        <SectionCard
+          title="Still missing today"
+          action={
+            <Badge variant="secondary" className="text-xs">
+              {rows.length - missingToday.length}/{rows.length} done
+            </Badge>
+          }
+        >
+          <div className="flex flex-wrap gap-2">
+            {missingToday.map((r) => (
+              <span
+                key={r.user_id}
+                className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm"
+              >
+                <Avatar className="size-5">
+                  <AvatarFallback className="bg-muted text-[9px] font-semibold uppercase">
+                    {r.username.slice(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
+                {r.username}
+              </span>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       <Tabs defaultValue="leaderboard">
         <TabsList>
@@ -131,14 +183,9 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
 
         {isLeader && (
           <TabsContent value="settings" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Group settings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SettingsForm group={group} />
-              </CardContent>
-            </Card>
+            <SectionCard title="Group settings">
+              <SettingsForm group={group} />
+            </SectionCard>
           </TabsContent>
         )}
       </Tabs>

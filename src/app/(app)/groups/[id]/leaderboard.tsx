@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowDown, Crown, Flame, Plus, Snowflake, type LucideIcon } from "lucide-react";
+import { motion } from "motion/react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -25,8 +26,12 @@ export interface LeaderboardRow {
   freezes: number;
   weight: number;
   solved: number;
+  doneToday?: boolean;
   cells: DayCell[];
 }
+
+// top-3 rank accents keyed to the chart palette
+const RANK_COLOR = ["text-chart-1", "text-chart-2", "text-chart-3"];
 
 type SortKey = "streak_current" | "streak_longest" | "weight" | "solved";
 
@@ -70,7 +75,7 @@ export function Leaderboard({
                 onClick={() => setSortKey(key)}
                 className={`-ml-2 gap-1 ${sortKey === key ? "text-foreground" : "text-muted-foreground"}`}
               >
-                {Icon && <Icon className="size-3.5 text-orange-500" aria-hidden />}
+                {Icon && <Icon className="size-3.5 text-amber-500" aria-hidden />}
                 {label}
                 {sortKey === key && <ArrowDown className="size-3" aria-hidden />}
               </Button>
@@ -78,7 +83,7 @@ export function Leaderboard({
           ))}
           <TableHead>
             <span className="flex items-center gap-1">
-              <Snowflake className="size-3.5 text-sky-400" aria-hidden />
+              <Snowflake className="size-3.5 text-chart-2" aria-hidden />
               Freezes
             </span>
           </TableHead>
@@ -87,10 +92,15 @@ export function Leaderboard({
       </TableHeader>
       <TableBody>
         {sorted.map((m, rank) => (
-          <TableRow key={m.user_id}>
+          <motion.tr
+            key={m.user_id}
+            layout
+            transition={{ type: "spring", stiffness: 400, damping: 34 }}
+            className="border-b transition-colors hover:bg-muted/50"
+          >
             <TableCell
-              className={`tabular-nums ${
-                rank === 0 ? "font-semibold text-primary" : "text-muted-foreground"
+              className={`font-mono tabular-nums ${
+                rank < 3 ? `font-semibold ${RANK_COLOR[rank]}` : "text-muted-foreground"
               }`}
             >
               {rank + 1}
@@ -100,14 +110,22 @@ export function Leaderboard({
                 href={`/groups/${groupId}/member/${m.user_id}`}
                 className="flex items-center gap-2 hover:underline"
               >
-                <Avatar className="size-6">
-                  <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary uppercase">
-                    {m.username.slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
+                <span className="relative">
+                  <Avatar className="size-6">
+                    <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary uppercase">
+                      {m.username.slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span
+                    title={m.doneToday ? "done today" : "not done today"}
+                    className={`absolute -right-0.5 -bottom-0.5 size-2 rounded-full ring-2 ring-card ${
+                      m.doneToday ? "bg-primary" : "bg-muted-foreground/40"
+                    }`}
+                  />
+                </span>
                 {m.username}
                 {m.user_id === leaderId && (
-                  <Crown className="size-3.5 text-primary" aria-label="group leader" />
+                  <Crown className="size-3.5 text-amber-500" aria-label="group leader" />
                 )}
               </Link>
             </TableCell>
@@ -133,7 +151,7 @@ export function Leaderboard({
                     }
                   >
                     <Plus className="size-3" aria-hidden />
-                    <Snowflake className="size-3.5 text-sky-400" aria-hidden />
+                    <Snowflake className="size-3.5 text-chart-2" aria-hidden />
                   </Button>
                 )}
               </span>
@@ -141,7 +159,7 @@ export function Leaderboard({
             <TableCell>
               <DayStrip cells={m.cells} maxWeight={maxDayWeight} />
             </TableCell>
-          </TableRow>
+          </motion.tr>
         ))}
       </TableBody>
     </Table>
