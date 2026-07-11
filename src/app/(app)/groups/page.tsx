@@ -9,24 +9,22 @@ import { BlurFade } from "@/components/ui/blur-fade";
 import { Button } from "@/components/ui/button";
 import { MagicCard } from "@/components/ui/magic-card";
 import { localDate } from "@/lib/core/dates";
-import { serverClient } from "@/lib/supabase/server";
+import { authedUserId, serverClient } from "@/lib/supabase/server";
 import { JoinDialog } from "./join-dialog";
 
 export const dynamic = "force-dynamic";
 
 export default async function GroupsPage() {
   const supabase = await serverClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/");
+  const userId = await authedUserId(supabase);
+  if (!userId) redirect("/");
 
   const [{ data: memberships }, { data: profile }] = await Promise.all([
     supabase
       .from("group_members")
       .select("streak_current, groups(id, name, mode, daily_target_weight, playlists(name))")
-      .eq("user_id", user.id),
-    supabase.from("profiles").select("timezone").eq("id", user.id).single(),
+      .eq("user_id", userId),
+    supabase.from("profiles").select("timezone").eq("id", userId).single(),
   ]);
 
   const groupIds = (memberships ?? []).map(

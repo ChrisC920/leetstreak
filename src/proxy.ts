@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PROTECTED = ["/dashboard", "/groups", "/join", "/stats", "/onboarding"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -25,13 +25,12 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // refreshes the session cookie; required on every matched request
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // verifies the JWT locally (asymmetric key) and refreshes the session
+  // cookie when it's about to expire; required on every matched request
+  const { data } = await supabase.auth.getClaims();
 
   const path = request.nextUrl.pathname;
-  if (!user && PROTECTED.some((p) => path.startsWith(p))) {
+  if (!data?.claims && PROTECTED.some((p) => path.startsWith(p))) {
     return NextResponse.redirect(new URL("/", request.url));
   }
   return response;

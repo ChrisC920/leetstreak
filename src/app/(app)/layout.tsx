@@ -6,19 +6,17 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { serverClient } from "@/lib/supabase/server";
+import { authedUserId, serverClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await serverClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/");
+  const userId = await authedUserId(supabase);
+  if (!userId) redirect("/");
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("username")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
   if (!profile) redirect("/onboarding");
 

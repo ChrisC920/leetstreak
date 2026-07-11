@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { addDays, dayBounds, localDate } from "@/lib/core/dates";
 import type { DayStatus } from "@/lib/core/types";
-import { serverClient } from "@/lib/supabase/server";
+import { authedUserId, serverClient } from "@/lib/supabase/server";
 import { InviteCode } from "./invite-code";
 import { Leaderboard, type LeaderboardRow } from "./leaderboard";
 import { LeaveButton } from "./leave-button";
@@ -21,29 +21,22 @@ const STRIP_DAYS = 28;
 export default async function GroupPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await serverClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/");
+  const userId = await authedUserId(supabase);
+  if (!userId) redirect("/");
 
-  const { data: group } = await supabase
-    .from("groups")
-    .select("*, playlists(name)")
-    .eq("id", id)
-    .maybeSingle();
-  if (!group) notFound(); // not a member -> RLS hides the row
-
-  const [{ data: members }, { data: days }, { data: profile }, { data: assignments }] =
+  const [{ data: group }, { data: members }, { data: days }, { data: profile }, { data: assignments }] =
     await Promise.all([
+      supabase.from("groups").select("*, playlists(name)").eq("id", id).maybeSingle(),
       supabase
         .from("group_members")
         .select("user_id, streak_current, streak_longest, freezes, profiles(username)")
         .eq("group_id", id)
         .order("streak_current", { ascending: false }),
       supabase.from("member_days").select("user_id, date, status, weight_done").eq("group_id", id),
-      supabase.from("profiles").select("timezone").eq("id", user.id).single(),
+      supabase.from("profiles").select("timezone").eq("id", userId).single(),
       supabase.from("daily_assignments").select("problem_ids").eq("group_id", id),
     ]);
+  if (!group) notFound(); // not a member -> RLS hides the row
 
   const today = localDate(new Date(), profile?.timezone ?? "UTC");
   const weekAgo = addDays(today, -6);
@@ -97,7 +90,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
 
   const missingToday = rows.filter((r) => !r.doneToday);
   const settlement = dayBounds(today, profile?.timezone ?? "UTC").end;
-  const isLeader = group.leader_id === user.id;
+  const isLeader = group.leader_id === userId;
 
   const policyPills = [
     (group.playlists as unknown as { name: string }).name,

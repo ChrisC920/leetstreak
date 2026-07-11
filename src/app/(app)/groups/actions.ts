@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { runSettle } from "@/lib/jobs/settle";
 import { adminClient } from "@/lib/supabase/admin";
-import { serverClient } from "@/lib/supabase/server";
+import { authedUserId, serverClient } from "@/lib/supabase/server";
 
 export interface GroupFormState {
   error?: string;
@@ -15,10 +15,8 @@ export async function createGroup(
   formData: FormData,
 ): Promise<GroupFormState> {
   const supabase = await serverClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/");
+  const me = await authedUserId(supabase);
+  if (!me) redirect("/");
 
   const name = String(formData.get("name") ?? "").trim();
   if (name.length < 2) return { error: "Group name too short" };
@@ -27,7 +25,7 @@ export async function createGroup(
     .from("groups")
     .insert({
       name,
-      leader_id: user.id,
+      leader_id: me,
       playlist_id: String(formData.get("playlist_id")),
       mode: String(formData.get("mode")) === "random" ? "random" : "ordered",
       daily_target_weight: Number(formData.get("daily_target_weight") || 3),
@@ -44,7 +42,7 @@ export async function createGroup(
 
   const { error: memberError } = await supabase
     .from("group_members")
-    .insert({ group_id: group.id, user_id: user.id });
+    .insert({ group_id: group.id, user_id: me });
   if (memberError) return { error: memberError.message };
 
   await runSettle(); // provision today's assignment immediately
@@ -95,10 +93,8 @@ export async function updateGroup(
 
 export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
   const supabase = await serverClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not signed in" };
+  const me = await authedUserId(supabase);
+  if (!me) return { error: "Not signed in" };
 
   const { data: group } = await supabase
     .from("groups")
@@ -107,7 +103,7 @@ export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
     .maybeSingle();
   if (!group) return { error: "Group not found" };
 
-  if (group.leader_id === user.id) {
+  if (group.leader_id === me) {
     // leader leaves: hand the group to the longest-standing member, or delete
     // it when they're the last one. RLS blocks this path, so it runs on the
     // admin client after the explicit leader check above.
@@ -116,7 +112,7 @@ export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
       .from("group_members")
       .select("user_id")
       .eq("group_id", groupId)
-      .neq("user_id", user.id)
+      .neq("user_id", me)
       .order("joined_at")
       .limit(1)
       .maybeSingle();
@@ -130,7 +126,7 @@ export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
         .from("group_members")
         .delete()
         .eq("group_id", groupId)
-        .eq("user_id", user.id);
+        .eq("user_id", me);
       if (delError) return { error: delError.message };
     } else {
       const { error } = await admin.from("groups").delete().eq("id", groupId);
@@ -142,7 +138,7 @@ export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
       .from("group_members")
       .delete({ count: "exact" })
       .eq("group_id", groupId)
-      .eq("user_id", user.id);
+      .eq("user_id", me);
     if (error) return { error: error.message };
     if (!count) return { error: "Couldn't leave this group" };
   }
@@ -155,17 +151,15 @@ export async function grantFreeze(
   userId: string,
 ): Promise<{ error?: string }> {
   const supabase = await serverClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not signed in" };
+  const me = await authedUserId(supabase);
+  if (!me) return { error: "Not signed in" };
 
   const { data: group } = await supabase
     .from("groups")
     .select("leader_id, max_freezes")
     .eq("id", groupId)
     .maybeSingle();
-  if (!group || group.leader_id !== user.id) return { error: "Only the leader can grant freezes" };
+  if (!group || group.leader_id !== me) return { error: "Only the leader can grant freezes" };
 
   // group_members RLS only lets users touch their own row; leader grants go
   // through the admin client after the explicit leader check above.

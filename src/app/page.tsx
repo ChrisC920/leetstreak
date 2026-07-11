@@ -21,7 +21,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { MagicCard } from "@/components/ui/magic-card";
 import { NumberTicker } from "@/components/ui/number-ticker";
-import { serverClient } from "@/lib/supabase/server";
+import { authedUserId, serverClient } from "@/lib/supabase/server";
 import { LoginForm } from "./login-form";
 
 const FEATURES = [
@@ -132,10 +132,7 @@ export default async function Home({
   searchParams: Promise<{ error?: string }>;
 }) {
   const supabase = await serverClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user) redirect("/dashboard");
+  if (await authedUserId(supabase)) redirect("/dashboard");
   const { error } = await searchParams;
 
   return (

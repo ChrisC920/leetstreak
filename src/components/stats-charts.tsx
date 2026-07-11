@@ -2,6 +2,7 @@
 // bars are divs, identity lives in text labels (never color alone).
 
 import type { LucideIcon } from "lucide-react";
+import { HeatCell } from "@/components/day-heatmap";
 import { Card, CardContent } from "@/components/ui/card";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { Progress } from "@/components/ui/progress";
@@ -110,7 +111,7 @@ export function HBar({
 }
 
 // sequential green ramp, light→dark (lightness-monotonic); zero uses the muted
-// track like the streak heatmap. Cells carry title tooltips + a legend below.
+// track like the streak heatmap. Cells carry styled tooltips + a legend below.
 const INTENSITY = ["#a7f3d0", "#34d399", "#059669", "#065f46"];
 
 function intensityColor(count: number, max: number): string | undefined {
@@ -128,12 +129,11 @@ export function IntensitySquare({
   count: number;
   max: number;
 }) {
-  const color = intensityColor(count, max);
   return (
-    <div
-      title={`${date}: ${count} submission${count === 1 ? "" : "s"}`}
-      className="size-3 rounded-[2px] bg-muted"
-      style={color ? { backgroundColor: color } : undefined}
+    <HeatCell
+      date={date}
+      color={intensityColor(count, max)}
+      headline={count > 0 ? `${count} submission${count === 1 ? "" : "s"}` : "No submissions"}
     />
   );
 }

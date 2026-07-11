@@ -7,15 +7,13 @@ import { computeStreak, type MemberDay } from "@/lib/core/streak";
 import { runSettle } from "@/lib/jobs/settle";
 import { recordSolves, syncUser } from "@/lib/jobs/sync";
 import { adminClient } from "@/lib/supabase/admin";
-import { serverClient } from "@/lib/supabase/server";
+import { authedUserId, serverClient } from "@/lib/supabase/server";
 
 async function currentUserId(): Promise<string> {
   const supabase = await serverClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/");
-  return user.id;
+  const userId = await authedUserId(supabase);
+  if (!userId) redirect("/");
+  return userId;
 }
 
 /** Poll LeetCode for the signed-in user right now. */

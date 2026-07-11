@@ -17,7 +17,7 @@ import { ShineBorder } from "@/components/ui/shine-border";
 import { addDays, canRepair, dayBounds, localDate } from "@/lib/core/dates";
 import type { Difficulty } from "@/lib/core/types";
 import { runSettle } from "@/lib/jobs/settle";
-import { serverClient } from "@/lib/supabase/server";
+import { authedUserId, serverClient } from "@/lib/supabase/server";
 import { MarkSolvedButton, SyncButton, UseFreezeButton } from "./sync-button";
 
 export const dynamic = "force-dynamic";
@@ -37,22 +37,32 @@ const DIFF_COLOR: Record<Difficulty, string> = {
 
 export default async function DashboardPage() {
   const supabase = await serverClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/");
+  const userId = await authedUserId(supabase);
+  if (!userId) redirect("/");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username, timezone, leetcode_username, last_synced_at")
-    .eq("id", user.id)
-    .single();
+  const now = new Date();
+  const [{ data: profile }, { data: memberships }, { data: mySolves }, { data: activity }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("username, timezone, leetcode_username, last_synced_at")
+        .eq("id", userId)
+        .single(),
+      supabase
+        .from("group_members")
+        .select("group_id, streak_current, streak_longest, freezes, groups(id, name, daily_target_weight, weight_easy, weight_medium, weight_hard, grace_period_days, freeze_earn_interval, max_freezes)")
+        .eq("user_id", userId),
+      supabase.from("solves").select("problem_id, solved_at").eq("user_id", userId),
+      // activity: groupmates' solves in the last 24h (RLS scopes visibility)
+      supabase
+        .from("solves")
+        .select("solved_at, profiles(username), problems(title, slug)")
+        .gte("solved_at", new Date(now.getTime() - 86_400_000).toISOString())
+        .neq("user_id", userId)
+        .order("solved_at", { ascending: false })
+        .limit(20),
+    ]);
   if (!profile) redirect("/onboarding");
-
-  const { data: memberships } = await supabase
-    .from("group_members")
-    .select("group_id, streak_current, streak_longest, freezes, groups(id, name, daily_target_weight, weight_easy, weight_medium, weight_hard, grace_period_days, freeze_earn_interval, max_freezes)")
-    .eq("user_id", user.id);
 
   if (!memberships || memberships.length === 0) {
     return (
@@ -72,25 +82,23 @@ export default async function DashboardPage() {
     );
   }
 
-  const now = new Date();
   const today = localDate(now, profile.timezone);
+  const groupIds = memberships.map((m) => m.group_id);
+
+  const fetchDays = () =>
+    Promise.all([
+      supabase.from("member_days").select("*").eq("user_id", userId).in("group_id", groupIds),
+      supabase.from("daily_assignments").select("*").in("group_id", groupIds),
+    ]);
+  let [{ data: memberDays }, { data: assignments }] = await fetchDays();
 
   // provision today's rows on first visit of the day instead of waiting for
   // the hourly cron. ponytail: full settle run; fine until user count grows
-  const { data: todayRows } = await supabase
-    .from("member_days")
-    .select("group_id")
-    .eq("user_id", user.id)
-    .eq("date", today);
-  if ((todayRows ?? []).length < memberships.length) {
+  const todayRows = (memberDays ?? []).filter((d) => d.date === today);
+  if (todayRows.length < memberships.length) {
     await runSettle(now);
+    [{ data: memberDays }, { data: assignments }] = await fetchDays();
   }
-
-  const groupIds = memberships.map((m) => m.group_id);
-  const [{ data: memberDays }, { data: assignments }] = await Promise.all([
-    supabase.from("member_days").select("*").eq("user_id", user.id).in("group_id", groupIds),
-    supabase.from("daily_assignments").select("*").in("group_id", groupIds),
-  ]);
 
   const problemIds = new Set<string>(
     (assignments ?? []).flatMap((a) => a.problem_ids as string[]),
@@ -101,10 +109,6 @@ export default async function DashboardPage() {
     .in("id", [...problemIds]);
   const problemById = new Map((problems ?? []).map((p) => [p.id, p as Problem]));
 
-  const { data: mySolves } = await supabase
-    .from("solves")
-    .select("problem_id, solved_at")
-    .eq("user_id", user.id);
   const solvedAt = new Map((mySolves ?? []).map((s) => [s.problem_id, s.solved_at]));
 
   const { start: dayStart, end: dayEnd } = dayBounds(today, profile.timezone);
@@ -112,15 +116,6 @@ export default async function DashboardPage() {
     const at = solvedAt.get(pid);
     return at !== undefined && new Date(at) >= dayStart && new Date(at) < dayEnd;
   };
-
-  // activity: groupmates' solves in the last 24h (RLS scopes visibility)
-  const { data: activity } = await supabase
-    .from("solves")
-    .select("solved_at, profiles(username), problems(title, slug)")
-    .gte("solved_at", new Date(now.getTime() - 86_400_000).toISOString())
-    .neq("user_id", user.id)
-    .order("solved_at", { ascending: false })
-    .limit(20);
 
   const groupData = memberships.map((m) => {
     const group = m.groups as unknown as {

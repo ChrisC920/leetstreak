@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { leetcodeUserExists } from "@/lib/leetcode";
-import { serverClient } from "@/lib/supabase/server";
+import { authedUserId, serverClient } from "@/lib/supabase/server";
 
 export interface OnboardingState {
   error?: string;
@@ -13,10 +13,8 @@ export async function completeOnboarding(
   formData: FormData,
 ): Promise<OnboardingState> {
   const supabase = await serverClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/");
+  const me = await authedUserId(supabase);
+  if (!me) redirect("/");
 
   const username = String(formData.get("username") ?? "").trim();
   const leetcodeUsername = String(formData.get("leetcode_username") ?? "").trim();
@@ -30,7 +28,7 @@ export async function completeOnboarding(
   }
 
   const { error } = await supabase.from("profiles").upsert({
-    id: user.id,
+    id: me,
     username,
     leetcode_username: leetcodeUsername || null,
     timezone,

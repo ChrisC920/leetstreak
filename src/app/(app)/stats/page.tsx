@@ -2,8 +2,6 @@ import {
   CalendarDays,
   Flame,
   ListChecks,
-  Snowflake,
-  Target,
   TrendingUp,
   Trophy,
   Zap,
@@ -11,27 +9,26 @@ import {
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { DayCellSquare, HeatmapLegend } from "@/components/day-heatmap";
-import { KpiCard } from "@/components/kpi-card";
 import { LeetCodeStats } from "@/components/leetcode-stats";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
-import { StatRing } from "@/components/stat-ring";
-import { OutcomeRow } from "@/components/stats-charts";
-import { AreaTrendChart, WeeklyTrendChart } from "@/components/trend-charts";
+import {
+  ConsistencyOutcomeCards,
+  StreakHeatmapCard,
+  StreakKpiRow,
+} from "@/components/streak-sections";
+import { AreaTrendChart } from "@/components/trend-charts";
 import { Badge } from "@/components/ui/badge";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { addDays, localDate } from "@/lib/core/dates";
 import type { DayStatus, Difficulty } from "@/lib/core/types";
-import { outcomeCounts, weekGrid, weeklyTrend } from "@/lib/stats";
-import { serverClient } from "@/lib/supabase/server";
+import { outcomeCounts } from "@/lib/stats";
+import { authedUserId, serverClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const WEEKS = 26; // half a year; a full year overflows small screens anyway
-const TREND_WEEKS = 12;
 const POINTS: Record<Difficulty, number> = { easy: 1, medium: 2, hard: 4 };
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -40,20 +37,18 @@ const RANK: DayStatus[] = ["complete", "repaired", "frozen", "pending", "missed"
 
 export default async function StatsPage() {
   const supabase = await serverClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/");
+  const userId = await authedUserId(supabase);
+  if (!userId) redirect("/");
 
   const [{ data: profile }, { data: days }, { data: memberships }, { data: solves }] =
     await Promise.all([
-      supabase.from("profiles").select("timezone, leetcode_username").eq("id", user.id).single(),
-      supabase.from("member_days").select("date, status, group_id, weight_done").eq("user_id", user.id),
+      supabase.from("profiles").select("timezone, leetcode_username").eq("id", userId).single(),
+      supabase.from("member_days").select("date, status, group_id, weight_done").eq("user_id", userId),
       supabase
         .from("group_members")
         .select("streak_current, streak_longest, freezes, group_id, groups(id, name)")
-        .eq("user_id", user.id),
-      supabase.from("solves").select("solved_at, problems(difficulty)").eq("user_id", user.id),
+        .eq("user_id", userId),
+      supabase.from("solves").select("solved_at, problems(difficulty)").eq("user_id", userId),
     ]);
 
   const timezone = profile?.timezone ?? "UTC";
@@ -81,7 +76,6 @@ export default async function StatsPage() {
   const maxDayWeight = Math.max(0, ...weightByDate.values());
 
   const today = localDate(new Date(), timezone);
-  const streakWeeks = weekGrid(today, WEEKS);
 
   const streakNow = Math.max(0, ...(memberships ?? []).map((m) => m.streak_current));
   const streakBest = Math.max(0, ...(memberships ?? []).map((m) => m.streak_longest));
@@ -89,7 +83,6 @@ export default async function StatsPage() {
 
   const outcome = outcomeCounts(bestByDate.values());
   const goodDays = outcome.settled - outcome.missed;
-  const trend = weeklyTrend(bestByDate, today, TREND_WEEKS);
 
   // solve effort from tracked solves
   const solveRows = (solves ?? []).map((s) => ({
@@ -115,7 +108,7 @@ export default async function StatsPage() {
   for (const gid of groupIds) {
     const rows = (peers ?? []).filter((p) => p.group_id === gid);
     const sorted = [...rows].sort((a, b) => b.streak_current - a.streak_current);
-    const idx = sorted.findIndex((p) => p.user_id === user.id);
+    const idx = sorted.findIndex((p) => p.user_id === userId);
     rankInGroup.set(gid, { rank: idx + 1, size: rows.length });
   }
 
@@ -151,18 +144,12 @@ export default async function StatsPage() {
 
         <TabsContent value="leetstreak" className="mt-4 flex flex-col gap-6">
       <BlurFade>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <KpiCard label="Current streak" value={streakNow} icon={Flame} accent="amber" />
-          <KpiCard label="Longest streak" value={streakBest} icon={Trophy} accent="violet" />
-          <KpiCard
-            label="Completion rate"
-            value={completionPct ?? "—"}
-            suffix={completionPct !== null ? "%" : undefined}
-            icon={Target}
-            accent="emerald"
-          />
-          <KpiCard label="Freezes banked" value={freezesBanked} icon={Snowflake} accent="blue" />
-        </div>
+        <StreakKpiRow
+          streakCurrent={streakNow}
+          streakLongest={streakBest}
+          completionPct={completionPct}
+          freezes={freezesBanked}
+        />
       </BlurFade>
 
       {solveTrend.length > 1 && (
@@ -174,55 +161,21 @@ export default async function StatsPage() {
       )}
 
       <BlurFade delay={0.1}>
-      <SectionCard title={`Last ${WEEKS} weeks`}>
-          <div className="overflow-x-auto">
-            <div className="flex gap-[2px]">
-              {streakWeeks.map((col, i) => (
-                <div key={i} className="flex flex-col gap-[2px]">
-                  {col.map((date) => (
-                    <DayCellSquare
-                      key={date}
-                      date={date}
-                      status={bestByDate.get(date)}
-                      weight={weightByDate.get(date)}
-                      maxWeight={maxDayWeight}
-                    />
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-          <HeatmapLegend />
-      </SectionCard>
+        <StreakHeatmapCard
+          today={today}
+          statusByDate={bestByDate}
+          weightByDate={weightByDate}
+          maxDayWeight={maxDayWeight}
+        />
       </BlurFade>
 
       <BlurFade delay={0.15}>
-      <div className="grid gap-6 md:grid-cols-2">
-        <SectionCard title="Weekly consistency">
-            <WeeklyTrendChart weeks={trend} />
-            <p className="text-xs text-muted-foreground">
-              Good days per week (complete, repaired, or frozen) over the last {TREND_WEEKS} weeks,
-              oldest to newest.
-            </p>
-        </SectionCard>
-
-        {outcome.settled > 0 && (
-          <SectionCard title="Day outcomes">
-            <div className="flex items-center gap-6">
-              <StatRing
-                value={completionPct ?? 0}
-                label="Completion"
-                sublabel="good days"
-                size={120}
-                className="shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <OutcomeRow counts={outcome} />
-              </div>
-            </div>
-          </SectionCard>
-        )}
-      </div>
+        <ConsistencyOutcomeCards
+          today={today}
+          statusByDate={bestByDate}
+          outcome={outcome}
+          completionPct={completionPct}
+        />
       </BlurFade>
 
       {solveRows.length > 0 && (
