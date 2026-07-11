@@ -146,6 +146,7 @@ export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
     if (error) return { error: error.message };
     if (!count) return { error: "Couldn't leave this group" };
   }
+  revalidatePath("/", "layout"); // purge cached pages still linking the left/deleted group
   redirect("/groups");
 }
 
