@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { canRepair, localDate } from "@/lib/core/dates";
 import { computeStreak, type MemberDay } from "@/lib/core/streak";
+import { runSettle } from "@/lib/jobs/settle";
 import { recordSolves, syncUser } from "@/lib/jobs/sync";
 import { adminClient } from "@/lib/supabase/admin";
 import { serverClient } from "@/lib/supabase/server";
@@ -32,7 +33,8 @@ export async function syncNow() {
   const { data: problems } = await db.from("problems").select("id, slug");
   const idBySlug = new Map((problems ?? []).map((p) => [p.slug, p.id]));
   await syncUser(db, userId, profile.leetcode_username, idBySlug);
-  revalidatePath("/dashboard");
+  await runSettle(); // settle finished days now so streaks/stats update immediately
+  revalidatePath("/", "layout");
 }
 
 /** Spend a banked freeze to cover a missed day inside its grace window.
@@ -104,5 +106,6 @@ export async function markSolved(problemId: string) {
   await recordSolves(db, userId, [
     { problem_id: problemId, solved_at: new Date().toISOString(), source: "manual" },
   ]);
-  revalidatePath("/dashboard");
+  await runSettle(); // settle finished days now so streaks/stats update immediately
+  revalidatePath("/", "layout");
 }

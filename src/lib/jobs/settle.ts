@@ -129,7 +129,9 @@ export async function runSettle(now = new Date()): Promise<SettleReport> {
     solvesByUser.get(s.user_id)!.set(s.problem_id, s.solved_at);
   }
 
-  // -- 1. settle pending days whose local midnight has passed ---------------
+  // -- 1. settle pending days: finished days settle immediately so streaks
+  //       and stats update the moment the last problem lands; unfinished days
+  //       wait for their local midnight ------------------------------------
   const { data: pendingDays } = await db
     .from("member_days")
     .select("group_id, user_id, date")
@@ -139,9 +141,29 @@ export async function runSettle(now = new Date()): Promise<SettleReport> {
     const profile = profileById.get(day.user_id);
     const group = groupById.get(day.group_id);
     if (!profile || !group) continue;
-    if (!isDayOver(day.date, now, profile.timezone)) continue;
 
     const { start, end } = dayBounds(day.date, profile.timezone);
+    const assignment = assignmentByKey.get(`${day.group_id}|${day.date}`) ?? [];
+    const userSolves = solvesByUser.get(day.user_id) ?? new Map();
+    const { complete, weightDone } = completion(
+      assignment, userSolves, start, end, difficulty, groupWeights(group),
+    );
+
+    if (!isDayOver(day.date, now, profile.timezone)) {
+      if (!complete) continue; // still in progress; midnight decides
+      // early settle: solves only move forward, so a finished day can't
+      // un-finish — safe to lock in "complete" before midnight
+      await db
+        .from("member_days")
+        .update({ status: "complete", weight_done: weightDone, settled_at: now.toISOString() })
+        .eq("group_id", day.group_id)
+        .eq("user_id", day.user_id)
+        .eq("date", day.date);
+      await recomputeStreak(db, group, day.group_id, day.user_id, true);
+      report.settled++;
+      continue;
+    }
+
     // never break a streak on stale data: wait for a post-midnight sync
     const synced =
       !profile.leetcode_username ||
@@ -150,12 +172,6 @@ export async function runSettle(now = new Date()): Promise<SettleReport> {
       report.deferred++;
       continue;
     }
-
-    const assignment = assignmentByKey.get(`${day.group_id}|${day.date}`) ?? [];
-    const userSolves = solvesByUser.get(day.user_id) ?? new Map();
-    const { complete, weightDone } = completion(
-      assignment, userSolves, start, end, difficulty, groupWeights(group),
-    );
 
     const { data: member } = await db
       .from("group_members")
