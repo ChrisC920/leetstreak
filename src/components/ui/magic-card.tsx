@@ -1,6 +1,12 @@
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react"
 import {
   motion,
   useMotionTemplate,
@@ -73,9 +79,12 @@ export function MagicCard(props: MagicCardProps) {
   const glowBlur = isOrbMode(props) ? (props.glowBlur ?? 60) : 60
   const glowOpacity = isOrbMode(props) ? (props.glowOpacity ?? 0.9) : 0.9
   const { theme, systemTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => setMounted(true), [])
+  // true after hydration, false during SSR — no effect-driven setState
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  )
 
   const isDarkTheme = useMemo(() => {
     if (!mounted) return true
@@ -219,4 +228,8 @@ export function MagicCard(props: MagicCardProps) {
       <div className="relative z-40">{children}</div>
     </motion.div>
   )
+}
+
+function emptySubscribe() {
+  return () => {}
 }
