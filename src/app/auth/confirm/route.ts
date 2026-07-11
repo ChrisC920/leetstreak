@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
-import { serverClient } from "@/lib/supabase/server";
+import { authedUserId, serverClient } from "@/lib/supabase/server";
 
 /** Lands here from the sign-in email. Two shapes, depending on template:
  *  - default template: GoTrue /verify 303s back with ?code= (PKCE)
@@ -30,7 +30,15 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/?error=auth", request.url));
   }
 
-  const { data: profile } = await supabase.from("profiles").select("id").maybeSingle();
+  // profiles are world-readable under RLS, so the lookup must filter to the
+  // signed-in user — an unfiltered maybeSingle() errors once the table has >1
+  // row and misroutes every existing account to onboarding
+  const userId = await authedUserId(supabase);
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", userId!)
+    .maybeSingle();
   return NextResponse.redirect(
     new URL(profile ? "/dashboard" : "/onboarding", request.url),
   );
