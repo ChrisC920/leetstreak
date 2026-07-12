@@ -53,12 +53,11 @@ export default async function DashboardPage() {
         .select("group_id, streak_current, streak_longest, freezes, groups(id, name, daily_target_weight, weight_easy, weight_medium, weight_hard, grace_period_days, freeze_earn_interval, max_freezes)")
         .eq("user_id", userId),
       supabase.from("solves").select("problem_id, solved_at").eq("user_id", userId),
-      // activity: groupmates' solves in the last 24h (RLS scopes visibility)
+      // activity: own + groupmates' solves in the last 24h (RLS scopes visibility)
       supabase
         .from("solves")
-        .select("solved_at, profiles(username), problems(title, slug)")
+        .select("user_id, solved_at, profiles(username), problems(title, slug)")
         .gte("solved_at", new Date(now.getTime() - 86_400_000).toISOString())
-        .neq("user_id", userId)
         .order("solved_at", { ascending: false })
         .limit(20),
     ]);
@@ -396,20 +395,21 @@ export default async function DashboardPage() {
 
         <div className="flex flex-col gap-6 lg:col-span-4">
       <BlurFade delay={0.2}>
-      <SectionCard title="Friend activity" action={<span className="text-xs text-muted-foreground">24h</span>}>
+      <SectionCard title="Recent activity" action={<span className="text-xs text-muted-foreground">24h</span>}>
           {!activity || activity.length === 0 ? (
             <p className="text-sm text-muted-foreground">No activity from your groups yet.</p>
           ) : (
             <ul className="flex flex-col gap-2.5 text-sm">
               {activity.map((a, i) => {
-                const who = (a.profiles as unknown as { username: string })?.username;
+                const username = (a.profiles as unknown as { username: string })?.username;
+                const who = a.user_id === userId ? "You" : username;
                 const prob = a.problems as unknown as { title: string; slug: string };
                 return (
                   <li key={i} className="flex flex-col gap-0.5">
                     <span className="flex items-center gap-2">
                       <Avatar className="size-6">
                         <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary uppercase">
-                          {(who ?? "?").slice(0, 2)}
+                          {(username ?? "?").slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
                       <span className="font-medium">{who}</span>
