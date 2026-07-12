@@ -11,6 +11,7 @@ import { localDate } from "@/lib/core/dates";
 import type { DayStatus } from "@/lib/core/types";
 import { outcomeCounts } from "@/lib/stats";
 import { authedUserId, serverClient } from "@/lib/supabase/server";
+import { CatchupCard } from "./catchup-card";
 
 export const dynamic = "force-dynamic";
 
@@ -24,20 +25,22 @@ export default async function MemberPage({
   const userId = await authedUserId(supabase);
   if (!userId) redirect("/");
 
-  const [{ data: member }, { data: days }, { data: profile }] = await Promise.all([
-    supabase
-      .from("group_members")
-      .select("streak_current, streak_longest, freezes, profiles(username, leetcode_username)")
-      .eq("group_id", id)
-      .eq("user_id", uid)
-      .maybeSingle(),
-    supabase
-      .from("member_days")
-      .select("date, status, weight_done")
-      .eq("group_id", id)
-      .eq("user_id", uid),
-    supabase.from("profiles").select("timezone").eq("id", userId).single(),
-  ]);
+  const [{ data: member }, { data: days }, { data: profile }, { data: group }] =
+    await Promise.all([
+      supabase
+        .from("group_members")
+        .select("streak_current, streak_longest, freezes, profiles(username, leetcode_username)")
+        .eq("group_id", id)
+        .eq("user_id", uid)
+        .maybeSingle(),
+      supabase
+        .from("member_days")
+        .select("date, status, weight_done, catchup_deadline")
+        .eq("group_id", id)
+        .eq("user_id", uid),
+      supabase.from("profiles").select("timezone").eq("id", userId).single(),
+      supabase.from("groups").select("leader_id").eq("id", id).maybeSingle(),
+    ]);
   // RLS hides rows of groups the viewer isn't in
   if (!member) notFound();
 
@@ -53,6 +56,23 @@ export default async function MemberPage({
   const maxDayWeight = Math.max(0, ...weightByDate.values());
 
   const today = localDate(new Date(), profile?.timezone ?? "UTC");
+
+  const isLeader = group?.leader_id === userId;
+  let assignableDates: string[] = [];
+  if (isLeader) {
+    const { data: groupAssignments } = await supabase
+      .from("daily_assignments")
+      .select("date")
+      .eq("group_id", id)
+      .order("date");
+    assignableDates = (groupAssignments ?? [])
+      .map((a) => a.date as string)
+      .filter((d) => d < today && !statusByDate.has(d));
+  }
+  const pendingCatchups = (days ?? [])
+    .filter((d) => d.status === "pending" && d.catchup_deadline)
+    .map((d) => ({ date: d.date, deadline: d.catchup_deadline as string }));
+
   const outcome = outcomeCounts(statusByDate.values());
   const goodDays = outcome.settled - outcome.missed;
 
@@ -108,6 +128,16 @@ export default async function MemberPage({
         outcome={outcome}
         completionPct={completionPct}
       />
+
+      {isLeader && (
+        <CatchupCard
+          groupId={id}
+          userId={uid}
+          username={username}
+          assignableDates={assignableDates}
+          pendingCatchups={pendingCatchups}
+        />
+      )}
 
         </TabsContent>
 

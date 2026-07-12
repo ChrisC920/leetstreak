@@ -41,8 +41,8 @@ const groupWeights = (g: GroupRow): Weights => ({
 });
 
 /** Every assigned problem solved inside [start, cutoff)? Also returns the
- *  weight actually completed for display. */
-function completion(
+ *  weight actually completed for display. Exported for tests. */
+export function completion(
   assignment: string[],
   solves: Map<string, string>,
   start: Date,
@@ -134,7 +134,7 @@ export async function runSettle(now = new Date()): Promise<SettleReport> {
   //       wait for their local midnight ------------------------------------
   const { data: pendingDays } = await db
     .from("member_days")
-    .select("group_id, user_id, date")
+    .select("group_id, user_id, date, catchup_deadline")
     .eq("status", "pending");
 
   for (const day of pendingDays ?? []) {
@@ -143,11 +143,47 @@ export async function runSettle(now = new Date()): Promise<SettleReport> {
     if (!profile || !group) continue;
 
     const { start, end } = dayBounds(day.date, profile.timezone);
+    // leader-assigned catch-up days (backfilled pre-join dates) accept solves
+    // any time until their deadline's local midnight
+    const cutoff = day.catchup_deadline
+      ? dayBounds(day.catchup_deadline, profile.timezone).end
+      : end;
     const assignment = assignmentByKey.get(`${day.group_id}|${day.date}`) ?? [];
     const userSolves = solvesByUser.get(day.user_id) ?? new Map();
     const { complete, weightDone } = completion(
-      assignment, userSolves, start, end, difficulty, groupWeights(group),
+      assignment, userSolves, start, cutoff, difficulty, groupWeights(group),
     );
+
+    if (day.catchup_deadline) {
+      if (complete) {
+        await db
+          .from("member_days")
+          .update({ status: "complete", weight_done: weightDone, settled_at: now.toISOString() })
+          .eq("group_id", day.group_id)
+          .eq("user_id", day.user_id)
+          .eq("date", day.date);
+        await recomputeStreak(db, group, day.group_id, day.user_id, true);
+        report.settled++;
+      } else if (isDayOver(day.catchup_deadline, now, profile.timezone)) {
+        // deadline passed. Catch-up is opt-in, so a miss never burns a freeze.
+        const synced =
+          !profile.leetcode_username ||
+          (profile.last_synced_at !== null && new Date(profile.last_synced_at) >= cutoff);
+        if (!synced) {
+          report.deferred++;
+          continue;
+        }
+        await db
+          .from("member_days")
+          .update({ status: "missed", weight_done: weightDone, settled_at: now.toISOString() })
+          .eq("group_id", day.group_id)
+          .eq("user_id", day.user_id)
+          .eq("date", day.date);
+        await recomputeStreak(db, group, day.group_id, day.user_id, false);
+        report.settled++;
+      }
+      continue;
+    }
 
     if (!isDayOver(day.date, now, profile.timezone)) {
       if (!complete) continue; // still in progress; midnight decides

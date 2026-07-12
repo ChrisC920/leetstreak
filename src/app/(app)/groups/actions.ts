@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { addDays, localDate } from "@/lib/core/dates";
 import { runSettle } from "@/lib/jobs/settle";
 import { adminClient } from "@/lib/supabase/admin";
 import { authedUserId, serverClient } from "@/lib/supabase/server";
@@ -144,6 +145,62 @@ export async function leaveGroup(groupId: string): Promise<{ error?: string }> {
   }
   revalidatePath("/", "layout"); // purge cached pages still linking the left/deleted group
   redirect("/groups");
+}
+
+export async function assignCatchup(
+  groupId: string,
+  userId: string,
+  date: string,
+): Promise<{ error?: string }> {
+  const supabase = await serverClient();
+  const me = await authedUserId(supabase);
+  if (!me) return { error: "Not signed in" };
+
+  const { data: group } = await supabase
+    .from("groups")
+    .select("leader_id, grace_period_days")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (!group || group.leader_id !== me) {
+    return { error: "Only the leader can assign catch-up days" };
+  }
+
+  // member_days RLS is read-only for users; writes go through the admin
+  // client after the explicit leader check above.
+  const admin = adminClient();
+  const [{ data: assignment }, { data: existing }, { data: profile }] = await Promise.all([
+    admin
+      .from("daily_assignments")
+      .select("date")
+      .eq("group_id", groupId)
+      .eq("date", date)
+      .maybeSingle(),
+    admin
+      .from("member_days")
+      .select("date")
+      .eq("group_id", groupId)
+      .eq("user_id", userId)
+      .eq("date", date)
+      .maybeSingle(),
+    admin.from("profiles").select("timezone").eq("id", userId).single(),
+  ]);
+  if (!assignment) return { error: "No group assignment exists for that day" };
+  if (existing) return { error: "That day is already on this member's record" };
+  if (!profile) return { error: "Member not found" };
+
+  const deadline = addDays(localDate(new Date(), profile.timezone), group.grace_period_days);
+  const { error } = await admin.from("member_days").insert({
+    group_id: groupId,
+    user_id: userId,
+    date,
+    status: "pending",
+    catchup_deadline: deadline,
+  });
+  if (error) return { error: error.message };
+
+  await runSettle(); // settle immediately in case the problems are already solved
+  revalidatePath(`/groups/${groupId}/member/${userId}`);
+  return {};
 }
 
 export async function grantFreeze(
