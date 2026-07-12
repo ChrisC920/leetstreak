@@ -149,12 +149,16 @@ export default async function DashboardPage() {
       .filter(
         (d) =>
           d.group_id === m.group_id &&
-          d.status === "missed" &&
-          canRepair(d.date, today, group.grace_period_days),
+          ((d.status === "missed" && canRepair(d.date, today, group.grace_period_days)) ||
+            // leader-assigned catch-up days: pending with their own deadline
+            (d.status === "pending" && d.catchup_deadline && today <= d.catchup_deadline)),
       )
       .map((d) => ({
         date: d.date as string,
-        deadline: dayBounds(addDays(d.date, group.grace_period_days), profile.timezone).end,
+        deadline: dayBounds(
+          (d.catchup_deadline as string | null) ?? addDays(d.date, group.grace_period_days),
+          profile.timezone,
+        ).end,
         problems: (
           ((assignments ?? []).find(
             (a) => a.group_id === m.group_id && a.date === d.date,
