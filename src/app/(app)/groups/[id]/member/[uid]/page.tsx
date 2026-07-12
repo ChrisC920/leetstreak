@@ -67,7 +67,18 @@ export default async function MemberPage({
             {username.slice(0, 2)}
           </AvatarFallback>
         </Avatar>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{username}</h1>
+        <div className="flex flex-col">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{username}</h1>
+          {leetcode_username && (
+            <a
+              href={`https://leetcode.com/u/${leetcode_username}/`}
+              target="_blank"
+              className="text-sm text-muted-foreground hover:underline"
+            >
+              @{leetcode_username} on LeetCode ↗
+            </a>
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue="leetstreak">
@@ -100,7 +111,7 @@ export default async function MemberPage({
 
         </TabsContent>
 
-        <TabsContent value="leetcode" className="mt-4">
+        <TabsContent value="leetcode" className="mt-4 flex flex-col gap-6">
           <LeetCodeStats
             username={leetcode_username}
             missingHint={`${username} hasn't linked a LeetCode account.`}

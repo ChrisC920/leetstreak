@@ -256,7 +256,7 @@ export default async function StatsPage() {
 
         </TabsContent>
 
-        <TabsContent value="leetcode" className="mt-4">
+        <TabsContent value="leetcode" className="mt-4 flex flex-col gap-6">
           <LeetCodeStats
             username={profile?.leetcode_username ?? null}
             missingHint="Set your LeetCode username in onboarding to see live profile stats."
