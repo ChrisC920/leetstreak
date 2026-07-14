@@ -168,25 +168,32 @@ export async function assignCatchup(
   // member_days RLS is read-only for users; writes go through the admin
   // client after the explicit leader check above.
   const admin = adminClient();
-  const [{ data: assignment }, { data: existing }, { data: profile }] = await Promise.all([
-    admin
-      .from("daily_assignments")
-      .select("date")
-      .eq("group_id", groupId)
-      .eq("date", date)
-      .maybeSingle(),
-    admin
-      .from("member_days")
-      .select("date")
-      .eq("group_id", groupId)
-      .eq("user_id", userId)
-      .eq("date", date)
-      .maybeSingle(),
-    admin.from("profiles").select("timezone").eq("id", userId).single(),
-  ]);
+  const [{ data: assignment }, { data: existing }, { data: profile }, { data: membership }] =
+    await Promise.all([
+      admin
+        .from("daily_assignments")
+        .select("date")
+        .eq("group_id", groupId)
+        .eq("date", date)
+        .maybeSingle(),
+      admin
+        .from("member_days")
+        .select("date")
+        .eq("group_id", groupId)
+        .eq("user_id", userId)
+        .eq("date", date)
+        .maybeSingle(),
+      admin.from("profiles").select("timezone").eq("id", userId).single(),
+      admin
+        .from("group_members")
+        .select("user_id")
+        .eq("group_id", groupId)
+        .eq("user_id", userId)
+        .maybeSingle(),
+    ]);
   if (!assignment) return { error: "No group assignment exists for that day" };
   if (existing) return { error: "That day is already on this member's record" };
-  if (!profile) return { error: "Member not found" };
+  if (!profile || !membership) return { error: "Member not found" };
 
   const deadline = addDays(localDate(new Date(), profile.timezone), group.grace_period_days);
   const { error } = await admin.from("member_days").insert({

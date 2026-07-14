@@ -153,20 +153,29 @@ export default async function DashboardPage() {
             // leader-assigned catch-up days: pending with their own deadline
             (d.status === "pending" && d.catchup_deadline && today <= d.catchup_deadline)),
       )
-      .map((d) => ({
-        date: d.date as string,
-        deadline: dayBounds(
-          (d.catchup_deadline as string | null) ?? addDays(d.date, group.grace_period_days),
-          profile.timezone,
-        ).end,
-        problems: (
-          ((assignments ?? []).find(
-            (a) => a.group_id === m.group_id && a.date === d.date,
-          )?.problem_ids as string[]) ?? []
-        )
-          .map((id) => problemById.get(id))
-          .filter((p): p is Problem => p !== undefined && !solvedAt.has(p.id)),
-      }))
+      .map((d) => {
+        // settle only counts solves from the day's start onward, so an older
+        // solve of the same problem must not hide it from the queue
+        const { start } = dayBounds(d.date as string, profile.timezone);
+        const solvedForDay = (pid: string) => {
+          const at = solvedAt.get(pid);
+          return at !== undefined && new Date(at) >= start;
+        };
+        return {
+          date: d.date as string,
+          deadline: dayBounds(
+            (d.catchup_deadline as string | null) ?? addDays(d.date, group.grace_period_days),
+            profile.timezone,
+          ).end,
+          problems: (
+            ((assignments ?? []).find(
+              (a) => a.group_id === m.group_id && a.date === d.date,
+            )?.problem_ids as string[]) ?? []
+          )
+            .map((id) => problemById.get(id))
+            .filter((p): p is Problem => p !== undefined && !solvedForDay(p.id)),
+        };
+      })
       .filter((b) => b.problems.length > 0);
 
     return { m, group, weights, todaysProblems, weightDone, weightTotal, allDone, backlog };
