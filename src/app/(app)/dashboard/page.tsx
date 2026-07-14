@@ -16,7 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { ShineBorder } from "@/components/ui/shine-border";
 import { addDays, canRepair, dayBounds, localDate } from "@/lib/core/dates";
 import type { Difficulty } from "@/lib/core/types";
-import { runSettle } from "@/lib/jobs/settle";
+import { runSettle, settleWindow } from "@/lib/jobs/settle";
 import { authedUserId, serverClient } from "@/lib/supabase/server";
 import { MarkSolvedButton, SyncButton, UseFreezeButton } from "./sync-button";
 
@@ -154,9 +154,13 @@ export default async function DashboardPage() {
             (d.status === "pending" && d.catchup_deadline && today <= d.catchup_deadline)),
       )
       .map((d) => {
-        // settle only counts solves from the day's start onward, so an older
-        // solve of the same problem must not hide it from the queue
-        const { start } = dayBounds(d.date as string, profile.timezone);
+        // hide a problem only when its solve falls inside the window settle
+        // actually counts for this day
+        const { start } = settleWindow(
+          d.date as string,
+          profile.timezone,
+          d.catchup_deadline as string | null,
+        );
         const solvedForDay = (pid: string) => {
           const at = solvedAt.get(pid);
           return at !== undefined && new Date(at) >= start;

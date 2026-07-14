@@ -40,6 +40,20 @@ const groupWeights = (g: GroupRow): Weights => ({
   hard: g.weight_hard,
 });
 
+/** Solve-counting window for a member day. Catch-up days (leader-backfilled
+ *  pre-join dates) accept solves from ANY time before the deadline — the
+ *  member may have solved an assigned problem long before the backfilled
+ *  date, and that still proves the day done. Exported for tests. */
+export function settleWindow(
+  date: string,
+  timezone: string,
+  catchupDeadline: string | null,
+): { start: Date; cutoff: Date } {
+  const { start, end } = dayBounds(date, timezone);
+  if (!catchupDeadline) return { start, cutoff: end };
+  return { start: new Date(0), cutoff: dayBounds(catchupDeadline, timezone).end };
+}
+
 /** Every assigned problem solved inside [start, cutoff)? Also returns the
  *  weight actually completed for display. Exported for tests. */
 export function completion(
@@ -142,12 +156,7 @@ export async function runSettle(now = new Date()): Promise<SettleReport> {
     const group = groupById.get(day.group_id);
     if (!profile || !group) continue;
 
-    const { start, end } = dayBounds(day.date, profile.timezone);
-    // leader-assigned catch-up days (backfilled pre-join dates) accept solves
-    // any time until their deadline's local midnight
-    const cutoff = day.catchup_deadline
-      ? dayBounds(day.catchup_deadline, profile.timezone).end
-      : end;
+    const { start, cutoff } = settleWindow(day.date, profile.timezone, day.catchup_deadline);
     const assignment = assignmentByKey.get(`${day.group_id}|${day.date}`) ?? [];
     const userSolves = solvesByUser.get(day.user_id) ?? new Map();
     const { complete, weightDone } = completion(
@@ -203,7 +212,7 @@ export async function runSettle(now = new Date()): Promise<SettleReport> {
     // never break a streak on stale data: wait for a post-midnight sync
     const synced =
       !profile.leetcode_username ||
-      (profile.last_synced_at !== null && new Date(profile.last_synced_at) >= end);
+      (profile.last_synced_at !== null && new Date(profile.last_synced_at) >= cutoff);
     if (!synced) {
       report.deferred++;
       continue;
